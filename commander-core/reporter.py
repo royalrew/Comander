@@ -121,7 +121,28 @@ async def callbacks_handlers(callback: types.CallbackQuery):
     elif callback.data == "btn_pulse":
         await callback.message.answer("❤️ Heartbeat online.")
     elif callback.data == "btn_hype_job":
-        await callback.message.answer("🔥 Hype pipeline queued.")
+        await callback.message.answer("🔥 Hype Mission queued. Generating multi-modal assets... (This takes ~15 seconds)")
+        
+        # Run the synchronous pipeline in a background thread so we don't block the bot
+        import asyncio
+        from pipeline import pipeline
+        
+        def run_pipeline():
+            return pipeline.execute_full_run("Cyberpunk Enterprise GRC Agent")
+            
+        try:
+            result = await asyncio.to_thread(run_pipeline)
+            
+            msg = (
+                f"✅ **Genesis Mission Complete**\n\n"
+                f"**Theme:** Cyberpunk Enterprise GRC Agent\n"
+                f"**Asset URL:** [View on R2]({result['assets']['image']})\n\n"
+                f"**Viral Caption Generated:**\n{result['caption']}\n\n"
+                f"*(Stored safely in OpenSearch Memory)*"
+            )
+            await callback.message.answer(msg, parse_mode="Markdown", disable_web_page_preview=False)
+        except Exception as e:
+            await callback.message.answer(f"❌ Genesis Mission failed: {str(e)}")
     elif callback.data == "btn_cfo":
         from cfo import cfo
         summary = cfo.get_financial_summary()

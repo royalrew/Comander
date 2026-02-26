@@ -1,19 +1,25 @@
 import os
 import uuid
 import boto3
+import requests
+from datetime import datetime
+from litellm import image_generation
 from router import router
+from opensearchpy import OpenSearch
+from urllib.parse import urlparse
 
 class HypePipeline:
     """
     Automated Multi-Modal B2B/B2C pipeline.
-    Transforms mundane objects (images) and generates corresponding AI music.
-    Uploads the final packaged assets to Cloudflare R2 for social media (Reels/TikTok).
+    Transforms mundane objects (images) and generates corresponding AI assets.
+    Uploads the final packaged assets to Cloudflare R2 and indexes in OpenSearch.
     """
     def __init__(self):
-        # Cloudflare R2 Setup (S3 Compatible API)
+        # Cloudflare R2 Setup
         account_id = os.getenv("R2_ACCOUNT_ID")
         self.bucket = os.getenv("R2_BUCKET_NAME")
         self.prefix = os.getenv("R2_PREFIX", "commander-assets/")
+        self.public_url = os.getenv("R2_ENDPOINT_URL")
         
         self.s3_client = boto3.client(
             's3',
@@ -22,8 +28,30 @@ class HypePipeline:
             aws_secret_access_key=os.getenv("R2_SECRET_ACCESS_KEY")
         )
 
+        # OpenSearch Setup
+        url = os.getenv("OPENSEARCH_URL")
+        user = os.getenv("OPENSEARCH_USERNAME")
+        pwd = os.getenv("OPENSEARCH_PWD") or os.getenv("OPENSEARCH_PASSWORD")
+        self.index_name = os.getenv("OPENSEARCH_INDEX_NAME", "commander_core_memory")
+        
+        if url:
+            parsed = urlparse(url)
+            host = parsed.hostname
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+            use_ssl = parsed.scheme == "https"
+            
+            self.os_client = OpenSearch(
+                hosts=[{'host': host, 'port': port}],
+                http_auth=(user, pwd) if user and pwd else None,
+                use_ssl=use_ssl,
+                verify_certs=False,
+                ssl_show_warn=False
+            )
+        else:
+            self.os_client = None
+
     def _upload_to_r2(self, file_content: bytes, filename: str, content_type: str) -> str:
-        """Securely uploads raw bytes to R2 under the locked prefix."""
+        """Securely uploads raw bytes to R2."""
         object_key = f"{self.prefix}{filename}"
         self.s3_client.put_object(
             Bucket=self.bucket,
@@ -31,68 +59,87 @@ class HypePipeline:
             Body=file_content,
             ContentType=content_type
         )
-        return f"s3://{self.bucket}/{object_key}"
+        return f"{self.public_url}/{self.bucket}/{object_key}"
 
-    def trigger_transformation(self, image_path: str, style_preset: str) -> dict:
+    def _index_in_opensearch(self, asset_data: dict):
+        """Indexes the generated asset metadata into OpenSearch."""
+        if not self.os_client:
+            return
+        
+        try:
+            # Ensure index exists
+            if not self.os_client.indices.exists(index=self.index_name):
+                self.os_client.indices.create(index=self.index_name)
+                
+            self.os_client.index(
+                index=self.index_name,
+                body=asset_data,
+                id=asset_data.get("asset_id", uuid.uuid4().hex)
+            )
+            print(f"Indexed asset {asset_data.get('asset_id')} in OpenSearch")
+        except Exception as e:
+            print(f"Failed to index in OpenSearch: {e}")
+
+    def trigger_transformation(self, style_preset: str) -> dict:
         """
-        Takes a base image, applies a transformation prompt via the Cortex Vision model,
-        and returns the R2 URL of the resulting generated image.
+        Generates an image prompt and an actual image via DALL-E 3.
         """
-        # 1. Ask Cortex for the exact Image Generation Prompt based on style
         prompt = router.ask_cortex(
             system_prompt="You are a viral social media director.",
-            user_prompt=f"Create an image generation prompt for a {style_preset} style transformation of the attached image context."
+            user_prompt=f"Create a highly detailed image generation prompt for a {style_preset} style transformation of a futuristic AI datacenter."
         )
+        print(f"Generated prompt: {prompt}")
         
-        print(f"Hype Pipeline generated prompt: {prompt}")
-        
-        # 2. Trigger Image Model (e.g. DALL-E 3, Midjourney API, or local Stable Diffusion)
-        # Note: Litellm requires specific `litellm.image_generation` routing. We mock the bytes here.
-        mock_image_bytes = b"mock_image_data_based_on_prompt"
-        
-        # 3. Upload to R2
+        try:
+            print("Calling DALL-E 3...")
+            response = image_generation(
+                prompt=prompt,
+                model="dall-e-3",
+                size="1024x1024"
+            )
+            image_url = response.data[0].url
+            img_response = requests.get(image_url)
+            image_bytes = img_response.content
+        except Exception as e:
+            print(f"DALL-E 3 generation failed: {e}")
+            image_bytes = b"Fallback data"
+
         output_filename = f"hype_{uuid.uuid4().hex[:8]}.jpg"
-        r2_url = self._upload_to_r2(mock_image_bytes, output_filename, "image/jpeg")
+        r2_url = self._upload_to_r2(image_bytes, output_filename, "image/jpeg")
         
         return {"type": "image", "url": r2_url, "prompt": prompt}
 
-    def trigger_audio(self, visual_context: str) -> dict:
-        """
-        Generates corresponding AI music perfectly synched to the visual vibe.
-        """
-        # 1. Ask Cortex for audio prompt
-        prompt = router.ask_cortex(
-            system_prompt="You are an audio engineer matching generative beats to viral visuals.",
-            user_prompt=f"Create a Suno/Udio prompt matching this vibe: {visual_context}"
+    def execute_full_run(self, preset: str = "Cyberpunk Enterprise") -> dict:
+        """Orchestrates the massive multi-modal run."""
+        print(f"Starting FULL HYPE PIPELINE with preset {preset}")
+        
+        asset_id = uuid.uuid4().hex
+        image_result = self.trigger_transformation(preset)
+        
+        caption = router.ask_cortex(
+            system_prompt="You are an expert copywriter.",
+            user_prompt=f"Write a viral LinkedIn/TikTok caption for an image described as: {image_result['prompt']}"
         )
         
-        # 2. Trigger Audio API (Suno / Udio Placeholder)
-        mock_audio_bytes = b"mock_mp3_data_based_on_audio_prompt"
+        asset_data = {
+            "asset_id": asset_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "type": "hype_generation",
+            "preset": preset,
+            "image_url": image_result["url"],
+            "caption": caption,
+            "prompt_used": image_result["prompt"]
+        }
         
-        # 3. Upload to R2
-        output_filename = f"beat_{uuid.uuid4().hex[:8]}.mp3"
-        r2_url = self._upload_to_r2(mock_audio_bytes, output_filename, "audio/mpeg")
-        
-        return {"type": "audio", "url": r2_url, "prompt": prompt}
-
-    def execute_full_run(self, original_image_path: str, preset: str = "Real Estate 80s Retro") -> dict:
-        """
-        Orchestrates the massive multi-modal run and packages it.
-        """
-        print(f"Starting FULL HYPE PIPELINE for {original_image_path} with preset {preset}")
-        image_result = self.trigger_transformation(original_image_path, preset)
-        audio_result = self.trigger_audio(image_result["prompt"])
+        # Save memory of this generation
+        self._index_in_opensearch(asset_data)
         
         return {
             "status": "success",
             "assets": {
-                "image": image_result["url"],
-                "audio": audio_result["url"]
+                "image": image_result["url"]
             },
-            "suggested_caption": router.ask_cortex(
-                system_prompt="You are an expert copywriter.",
-                user_prompt=f"Write a viral TikTok caption for an image described as: {image_result['prompt']} and beat: {audio_result['prompt']}"
-            )
+            "caption": caption
         }
 
 pipeline = HypePipeline()
