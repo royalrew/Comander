@@ -12,7 +12,8 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-AUTHORIZED_USER = int(os.getenv("TELEGRAM_AUTHORIZED_USER_ID", "123456789"))
+# Safely parse the ID as a string and strip whitespace to prevent type errors
+AUTHORIZED_USER = str(os.getenv("TELEGRAM_AUTHORIZED_USER_ID", "123456789")).strip()
 
 if not TELEGRAM_TOKEN:
     raise ValueError("CRITICAL: TELEGRAM_BOT_TOKEN environment variable is missing.")
@@ -46,8 +47,8 @@ class Reporter:
 
     async def verify_user(self, message: types.Message) -> bool:
         """Verifies if the sender is the authorized CEO."""
-        if message.from_user.id != AUTHORIZED_USER:
-            await message.reply("Access Denied. You are not authorized to command me.")
+        if str(message.from_user.id) != AUTHORIZED_USER:
+            await message.reply(f"Access Denied. You are not authorized to command me. (Your ID: {message.from_user.id})")
             return False
         return True
 
@@ -109,7 +110,7 @@ async def cmd_hype(message: types.Message):
 
 @dp.callback_query()
 async def callbacks_handlers(callback: types.CallbackQuery):
-    if callback.from_user.id != AUTHORIZED_USER:
+    if str(callback.from_user.id) != AUTHORIZED_USER:
         await callback.answer("Access Denied", show_alert=True)
         return
 
