@@ -1,0 +1,58 @@
+# === SECURITY FIRST: ENV FILES ===
+.env
+.env.local
+.env.*.local
+*.env
+**/.env
+**/*.env
+
+# === PYTHON (Commander Core) ===
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+venv/
+ENV/
+env/
+.env/
+
+# === NEXT.JS (Commander Dashboard) ===
+node_modules/
+.next/
+out/
+build/
+.vercel
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# === IDE & OS ===
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# === MISSION DATA ===
+# Exclude the AI playground where the commander builds things
+AI playground/
+active-missions/
