@@ -1,6 +1,5 @@
 import subprocess
 from io_jail import write_file, read_file
-from router import router
 
 class Surgeon:
     """
@@ -17,6 +16,8 @@ class Surgeon:
         and rewrites it if successful.
         """
         try:
+            from router import router # Local import to avoid circular dependency
+            
             original_code = read_file(filepath)
             
             # Using Muscle model for pure code syntax replacement
