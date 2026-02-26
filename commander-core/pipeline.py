@@ -1,7 +1,7 @@
 import os
 import uuid
 import boto3
-from .router import router
+from router import router
 
 class HypePipeline:
     """

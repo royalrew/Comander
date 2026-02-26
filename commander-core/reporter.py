@@ -123,7 +123,7 @@ async def callbacks_handlers(callback: types.CallbackQuery):
     elif callback.data == "btn_hype_job":
         await callback.message.answer("🔥 Hype pipeline queued.")
     elif callback.data == "btn_cfo":
-        from .cfo import cfo
+        from cfo import cfo
         summary = cfo.get_financial_summary()
         await callback.message.answer(summary)
 

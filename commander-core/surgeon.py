@@ -1,6 +1,6 @@
 import subprocess
-from .io_jail import write_file, read_file
-from .router import router
+from io_jail import write_file, read_file
+from router import router
 
 class Surgeon:
     """

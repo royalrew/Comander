@@ -1,7 +1,7 @@
 import os
 from litellm import completion
 from dotenv import load_dotenv
-from .cfo import cfo, TokenLimitExceeded
+from cfo import cfo, TokenLimitExceeded
 
 load_dotenv()
 

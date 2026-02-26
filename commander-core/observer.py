@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from tree_sitter import Language, Parser
-from .io_jail import read_file, list_files
+from io_jail import read_file, list_files
 
 # Note: Tree-sitter setup in real environments requires compiling the shared objects (.so / .dll).
 # We are creating a mock wrapper that assumes the languages are available.

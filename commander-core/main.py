@@ -4,9 +4,9 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 
-from .reporter import start_telegram_polling, reporter_instance
-from .router import router
-from .pipeline import pipeline
+from reporter import start_telegram_polling, reporter_instance
+from router import router
+from pipeline import pipeline
 
 load_dotenv()
 
