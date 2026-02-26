@@ -74,9 +74,11 @@ from dotenv import load_dotenv
 load_dotenv()
 ALLOWED_MISSIONS_DIR = os.getenv("ALLOWED_MISSIONS_DIR")
 
-# Fallback for dev if not set, though production should fail hard
+# Fallback for dev/railway if not set. Use current working directory.
 if not ALLOWED_MISSIONS_DIR:
-    raise RuntimeError("CRITICAL: ALLOWED_MISSIONS_DIR environment variable is missing.")
+    import logging
+    logging.warning("ALLOWED_MISSIONS_DIR not set in environment. Defaulting to current working directory ('.').")
+    ALLOWED_MISSIONS_DIR = "."
 
 jail = IOJail(ALLOWED_MISSIONS_DIR)
 
