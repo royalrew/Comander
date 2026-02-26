@@ -77,24 +77,31 @@ def test_opensearch():
     user = os.getenv("OPENSEARCH_USERNAME")
     pwd = os.getenv("OPENSEARCH_PWD") or os.getenv("OPENSEARCH_PASSWORD")
     
+    if not url:
+        print("❌ OpenSearch Error: OPENSEARCH_URL is not set.")
+        return
+
     try:
-        # Resolve URL to host and port
         from urllib.parse import urlparse
         parsed = urlparse(url)
         host = parsed.hostname
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        use_ssl = parsed.scheme == "https"
+        
+        print(f"Connecting to {parsed.scheme}://{host}:{port} (SSL: {use_ssl})...")
         
         client = OpenSearch(
             hosts=[{'host': host, 'port': port}],
-            http_auth=(user, pwd),
-            use_ssl=True,
+            http_auth=(user, pwd) if user and pwd else None,
+            use_ssl=use_ssl,
             verify_certs=False,
             ssl_show_warn=False
         )
         info = client.info()
-        print(f"✅ OpenSearch: Connected to {info['cluster_name']}")
+        print(f"✅ OpenSearch: Connected to {info['cluster_name']} (Version: {info['version']['number']})")
     except Exception as e:
         print(f"❌ OpenSearch Error: {e}")
+        print("💡 Hint: If OPENSEARCH_URL uses 'https' but security is disabled on Railway, try changing it to 'http'.")
 
 async def run_all():
     print("=== COMMANDER SMOKE TEST ===\n")
