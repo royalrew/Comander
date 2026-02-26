@@ -117,8 +117,8 @@ class HypePipeline:
         image_result = self.trigger_transformation(preset)
         
         caption = router.ask_cortex(
-            system_prompt="You are an expert copywriter.",
-            user_prompt=f"Write a viral LinkedIn/TikTok caption for an image described as: {image_result['prompt']}"
+            system_prompt="Du är en professionell men lättsam kollega som delar med dig av visuella koncept. Skriv på svenska. Använd en naturlig och mänsklig ton. Inga hashtags är tillåtna. Förklara bilden kortfattat utan att låta som en robot.",
+            user_prompt=f"Skriv en kort, intressant presentation (max 3 meningar) för en kollega på Slack/Teams baserat på detta bildkoncept: {image_result['prompt']}. Använd INGA hashtags."
         )
         
         asset_data = {
