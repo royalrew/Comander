@@ -1,47 +1,173 @@
 import os
+import json
 from litellm import completion
 from dotenv import load_dotenv
 from cfo import cfo, TokenLimitExceeded
 
+# Import our autonomous tools
+from io_jail import list_files, read_file
+from surgeon import surgeon
+from observer import observer
+
 load_dotenv()
+
+# ==========================================
+# TOOL DEFINITIONS (OpenAI Schema)
+# ==========================================
+TOOLS_SCHEMA = [
+    {
+        "type": "function",
+        "function": {
+            "name": "list_files",
+            "description": "Lists all accessible code files in a mission directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "mission_name": {"type": "string", "description": "Name of the mission folder (e.g. commander-dashboard)"}
+                },
+                "required": ["mission_name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Reads the content of a specific file.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filepath": {"type": "string", "description": "Relative or absolute path to the file"}
+                },
+                "required": ["filepath"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "refactor_file",
+            "description": "Rewrites a file to achieve a specific objective.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filepath": {"type": "string", "description": "Path to the file to rewrite"},
+                    "objective": {"type": "string", "description": "Highly detailed instruction matching the user's intent"}
+                },
+                "required": ["filepath", "objective"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "validate_code",
+            "description": "Runs a terminal command (like npm run build, or pytest) to validate the code. Self-corrects on failure.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filepath": {"type": "string", "description": "The primary file being validated"},
+                    "command_list": {
+                        "type": "array", 
+                        "items": {"type": "string"},
+                        "description": "The command as a list of strings, e.g. ['npm', 'run', 'build']"
+                    }
+                },
+                "required": ["filepath", "command_list"]
+            }
+        }
+    }
+]
 
 class ModelOrchestrator:
     """
     Handles Multi-Model Routing via LiteLLM.
-    Ensures Cortex models handle complex tasks and Muscle models handle simple/syntax tasks.
     Enforces cost-tracking via the CFO module.
+    Runs the ReAct (Reason + Act) loop for autonomous debugging.
     """
     def __init__(self):
         self.cortex_model = os.getenv("CORTEX_MODEL", "gpt-4o")
         self.muscle_coder = os.getenv("MUSCLE_CODER_MODEL", "deepseek-coder")
         self.watchdog_model = os.getenv("WATCHDOG_MODEL", "ollama/llama3")
+        self.max_agent_loops = 5  # Hard limit to prevent infinite debugging
 
-    def _route_request(self, model_choice: str, messages: list[dict], **kwargs) -> str:
-        """
-        Internal wrapper around LiteLLM completion to handle standardized error reporting,
-        retries, and CFO cost routing.
-        """
+    def _execute_tool(self, name: str, args: dict) -> str:
+        """Dynamically executes the chosen tool and returns stringified results."""
         try:
-            # Route to Litellm
-            # litellm will use the API keys matching the provider string in model_choice
-            response = completion(model=model_choice, messages=messages, **kwargs)
-            
-            # Extract usage metrics for CFO
-            if hasattr(response, 'usage'):
-                prompt_tokens = response.usage.prompt_tokens
-                completion_tokens = response.usage.completion_tokens
-                cost = cfo.estimate_cost(prompt_tokens, completion_tokens, model_choice)
-                cfo.add_cost(cost)
-                
-            return response.choices[0].message.content
-            
-        except TokenLimitExceeded as e:
-            # Circuit Breaker triggered
-            print(f"ROUTER BLOCKED: {e}")
-            return "ERROR: FINANCIAL CIRCUIT BREAKER. Daily spend limit reached."
+            print(f"🔧 AGENT ACTION: Executing '{name}' with {args}")
+            if name == "list_files":
+                return str(list_files(args["mission_name"]))
+            elif name == "read_file":
+                return read_file(args["filepath"])
+            elif name == "refactor_file":
+                success = surgeon.refactor_file(args["filepath"], args["objective"])
+                return "File rewritten successfully." if success else "Failed to rewrite file."
+            elif name == "validate_code":
+                success = surgeon.validate_code(args["filepath"], args["command_list"])
+                return "Validation passed! Zero errors." if success else "Validation failed after maximum self-correction retries."
+            else:
+                return f"Tool '{name}' not found."
         except Exception as e:
-            print(f"LiteLLM Error with model {model_choice}: {e}")
-            return f"ERROR: Model generation failed. Details: {e}"
+            return f"Error executing {name}: {str(e)}"
+
+    def _route_request(self, model_choice: str, messages: list[dict], use_tools: bool = False, **kwargs) -> str:
+        """
+        Internal wrapper around LiteLLM completion to handle the ReAct loop,
+        tool calling, standardized error reporting, and CFO cost routing.
+        """
+        loops = 0
+        current_messages = messages.copy()
+        
+        while loops < self.max_agent_loops:
+            try:
+                # Add tools only if requested
+                api_kwargs = kwargs.copy()
+                if use_tools:
+                    api_kwargs["tools"] = TOOLS_SCHEMA
+                    api_kwargs["tool_choice"] = "auto"
+
+                response = completion(model=model_choice, messages=current_messages, **api_kwargs)
+                response_msg = response.choices[0].message
+                
+                # Extract usage metrics for CFO
+                if hasattr(response, 'usage'):
+                    prompt_tokens = response.usage.prompt_tokens
+                    completion_tokens = response.usage.completion_tokens
+                    cfo.add_cost(cfo.estimate_cost(prompt_tokens, completion_tokens, model_choice))
+
+                # If the model wants to call tools, execute them and loop
+                if getattr(response_msg, 'tool_calls', None):
+                    # Append the assistant's tool call request to the history
+                    current_messages.append(response_msg.model_dump())
+                    
+                    for tool_call in response_msg.tool_calls:
+                        function_name = tool_call.function.name
+                        function_args = json.loads(tool_call.function.arguments)
+                        
+                        tool_result = self._execute_tool(function_name, function_args)
+                        
+                        # Append the tool's result to the history
+                        current_messages.append({
+                            "role": "tool",
+                            "name": function_name,
+                            "content": tool_result,
+                            "tool_call_id": tool_call.id
+                        })
+                    
+                    loops += 1
+                    continue # Loop back to let the model evaluate the tool results
+                
+                # If no tool calls, return the final text response
+                return response_msg.content or "Task completed silently."
+                
+            except TokenLimitExceeded as e:
+                print(f"ROUTER BLOCKED: {e}")
+                return "ERROR: FINANCIAL CIRCUIT BREAKER. Daily spend limit reached."
+            except Exception as e:
+                print(f"LiteLLM Error with model {model_choice}: {e}")
+                return f"ERROR: Model generation failed. Details: {e}"
+
+        return f"ERROR: Maximum Agent Loop Count ({self.max_agent_loops}) exceeded. Forced abort."
 
     def ask_cortex(self, user_prompt: str, history: list[dict] = None, system_prompt: str = None) -> str:
         """
@@ -66,7 +192,7 @@ class ModelOrchestrator:
             
         messages.append({"role": "user", "content": user_prompt})
         
-        return self._route_request(self.cortex_model, messages)
+        return self._route_request(self.cortex_model, messages, use_tools=True)
 
     def ask_muscle_coder(self, task_description: str, code_context: str) -> str:
         """
