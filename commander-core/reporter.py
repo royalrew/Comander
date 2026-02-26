@@ -105,6 +105,53 @@ async def cmd_hype(message: types.Message):
         await message.answer("🔥 Triggering manual Hype job for Real Estate presets. [Feature Pending]")
 
 # ==========================================
+# CHAT HANDLER (Modell-Lera / Conversational Mode)
+# ==========================================
+user_sessions = {}
+
+@dp.message()
+async def chat_handler(message: types.Message):
+    if not await reporter_instance.verify_user(message):
+        return
+
+    user_id = message.from_user.id
+    user_text = message.text
+
+    if not user_text:
+        return
+
+    # Show typing indicator
+    await bot.send_chat_action(chat_id=user_id, action="typing")
+
+    # Initialize memory if empty
+    if user_id not in user_sessions:
+        user_sessions[user_id] = []
+        
+    history = user_sessions[user_id]
+
+    try:
+        from router import router
+        import asyncio
+
+        def ask_ai():
+            return router.ask_cortex(user_prompt=user_text, history=history)
+
+        # Run synchronously in a thread to not block other Telegram users
+        reply = await asyncio.to_thread(ask_ai)
+
+        # Update history
+        history.append({"role": "user", "content": user_text})
+        history.append({"role": "assistant", "content": reply})
+        
+        # Keep memory bounded to last 20 messages to save context window
+        user_sessions[user_id] = history[-20:]
+
+        await message.answer(reply)
+    except Exception as e:
+        logging.error(f"Chat error: {e}")
+        await message.answer(f"❌ Ett fel uppstod i mina kognitiva kretsar: {str(e)}")
+
+# ==========================================
 # CALLBACK HANDLERS (For Inline Keyboard)
 # ==========================================
 

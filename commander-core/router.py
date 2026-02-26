@@ -43,14 +43,29 @@ class ModelOrchestrator:
             print(f"LiteLLM Error with model {model_choice}: {e}")
             return f"ERROR: Model generation failed. Details: {e}"
 
-    def ask_cortex(self, system_prompt: str, user_prompt: str) -> str:
+    def ask_cortex(self, user_prompt: str, history: list[dict] = None, system_prompt: str = None) -> str:
         """
-        Uses the Cortex model (e.g. GPT-4o) for high-level reasoning, vision, or complex architecture decisions.
+        Uses the Cortex model for high-level reasoning, vision, or complex architecture decisions.
+        Takes an optional history array for continuous conversation.
         """
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
+        if system_prompt is None:
+            system_prompt = (
+                "Du är The Commander, en state-of-the-art Enterprise GRC Agent och CTO för Sintari. "
+                "Du är 'modell-lera' – extremt anpassningsbar. Om användaren säger att du heter Gustav, heter du Gustav. "
+                "Du är 100% ärlig med dina egna tekniska eller access-relaterade begränsningar. "
+                "När du stöter på en begränsning, ge istället direkta, strategiska förslag på hur användaren kan nå sina mål. "
+                "Skilj tydligt på när ni bara pratar/spånar idéer och när du faktiskt bygger eller exekverar kod. "
+                "Inget robot-snack, inga hashtags. Svara kortfattat, mänskligt och professionellt."
+            )
+
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        if history:
+            # Append previous conversation context
+            messages.extend(history)
+            
+        messages.append({"role": "user", "content": user_prompt})
+        
         return self._route_request(self.cortex_model, messages)
 
     def ask_muscle_coder(self, task_description: str, code_context: str) -> str:
