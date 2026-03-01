@@ -82,13 +82,14 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "memorize_fact",
-            "description": "Saves an important fact about the user, project, or context to Long-Term Persistent Memory. Use this when the user says 'Remember that...' or tells you a fact about themselves.",
+            "description": "Saves an important fact about the user, project, or context to Long-Term Persistent Memory (OpenSearch). Use this when the user says 'Remember that...' or tells you a fact about themselves.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "fact": {"type": "string", "description": "The information to remember permanently (e.g., 'The CEO's name is Jimmy')"}
+                    "fact": {"type": "string", "description": "The information to remember permanently (e.g., 'The CEO's name is Jimmy')"},
+                    "category": {"type": "string", "description": "Category of the fact (e.g. 'Personal', 'Preferences', 'Project')"}
                 },
-                "required": ["fact"]
+                "required": ["fact", "category"]
             }
         }
     },
@@ -153,10 +154,10 @@ class ModelOrchestrator:
                 return "Validation passed! Zero errors." if success else "Validation failed after maximum self-correction retries."
             elif name == "memorize_fact":
                 fact = args["fact"]
-                memory_file = os.path.join(os.path.dirname(__file__), 'global_memory.txt')
-                with open(memory_file, "a", encoding="utf-8") as f:
-                    f.write(f"- {fact}\n")
-                return f"Fact successfully memorized: {fact}"
+                category = args.get("category", "General")
+                from memory_module import memory_bank
+                success = memory_bank.store_memory(category, fact)
+                return f"Fact successfully memorized in OpenSearch: {fact}" if success else "Failed to store memory."
             elif name == "add_calendar_event":
                 success = calendar_agent.add_event(args["start_date"], args["start_time"], args["description"], args.get("end_time"))
                 return f"Händelse ({args['description']}) inlagd på datumet {args['start_date']} kl {args['start_time']}." if success else "Kunde inte lägga till händelsen."
@@ -175,7 +176,24 @@ class ModelOrchestrator:
         tool calling, standardized error reporting, and CFO cost routing.
         """
         loops = 0
-        current_messages = messages.copy()
+        
+        # RAG Injection: Retrieve relevant memories before starting the execution loop
+        user_msg = next((m for m in reversed(messages) if m["role"] == "user"), None)
+        if user_msg and isinstance(user_msg.get("content"), str) and len(user_msg["content"]) > 3:
+            from memory_module import memory_bank
+            memories = memory_bank.search_memory(user_msg["content"], limit=5)
+            if memories:
+                import copy
+                current_messages = copy.deepcopy(messages)
+                mem_str = "\n".join([f"- [{m.get('category','General')}] {m.get('text','')}" for m in memories])
+                for msg in current_messages:
+                    if msg["role"] == "system":
+                        msg["content"] += f"\n\n[AKTIVT LÅNGTIDSMINNE (Från OpenSearch Vector DB)]\nAnvänd dessa minnesfragment om CEO/Projektet:\n{mem_str}"
+                        break
+            else:
+                current_messages = messages.copy()
+        else:
+            current_messages = messages.copy()
         
         while loops < self.max_agent_loops:
             try:
