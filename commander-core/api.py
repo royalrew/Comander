@@ -44,34 +44,57 @@ async def get_cfo_status():
         "circuit_breaker_active": cfo.current_daily_spend > cfo.max_daily_spend
     }
 
-@app.get("/api/v1/memory/recent")
-async def get_recent_memory():
-    """Returns the simulated recent memory log for the dashboard."""
-    # In a full implementation, this queries OpenSearch and PostgreSQL
+@app.get("/api/v1/cortex/status")
+async def get_cortex_status():
+    """Returns the core heartbeat and overall memory usage."""
+    count = 0
+    try:
+        from memory_module import memory_bank
+        if memory_bank.client and memory_bank.client.indices.exists(index="commander_core_memory"):
+            count = memory_bank.client.count(index="commander_core_memory")['count']
+    except Exception as e:
+        print(f"Error checking OpenSearch count: {e}")
+        
     return {
-        "memory_items": [
-            {
-                "file": "master.prompt.md",
-                "category": "System Regler",
-                "tokens": 4520,
-                "timestamp": "Idag 14:32"
-            },
-            {
-                "file": "api_test_results.json",
-                "category": "Verifiering",
-                "tokens": 842,
-                "timestamp": "Idag 10:15"
-            },
-            {
-                "file": "ceo_profile.yaml",
-                "category": "Kontext",
-                "tokens": 120,
-                "timestamp": "Igår"
-            }
-        ],
-        "opensearch_usage_percent": 12,
-        "postgres_active_sessions": 4
+        "heartbeat": "stable",
+        "active_model": "gpt-4o",
+        "memory_usage": f"{count}/10000 vectors"
     }
+
+@app.get("/api/v1/cortex/logs")
+async def get_cortex_logs():
+    """Returns the last 50 rows from the system_logs Postgres table."""
+    from database import SessionLocal
+    from models import SystemLogDB
+    db = SessionLocal()
+    try:
+        logs = db.query(SystemLogDB).order_by(SystemLogDB.timestamp.desc()).limit(50).all()
+        return {"logs": [{"id": l.id, "timestamp": l.timestamp.isoformat(), "action": l.action_type, "details": l.details} for l in logs]}
+    except Exception as e:
+        return {"logs": [], "error": str(e)}
+    finally:
+        db.close()
+
+@app.get("/api/v1/cortex/memories")
+async def get_cortex_memories():
+    """Returns the last 5 indexed thoughts from OpenSearch."""
+    from memory_module import memory_bank
+    if not memory_bank.client: return {"memories": []}
+    
+    search_query = {
+        "size": 5,
+        "query": {"match_all": {}},
+        "sort": [{"timestamp": {"order": "desc"}}],
+        "_source": ["text", "category", "timestamp"]
+    }
+    try:
+        if memory_bank.client.indices.exists(index="commander_core_memory"):
+            response = memory_bank.client.search(index="commander_core_memory", body=search_query)
+            hits = response["hits"]["hits"]
+            return {"memories": [{"id": h["_id"], **h["_source"]} for h in hits]}
+        return {"memories": []}
+    except Exception as e:
+        return {"memories": [], "error": str(e)}
 
 @app.get("/api/v1/tools/status")
 async def get_tools_status():
