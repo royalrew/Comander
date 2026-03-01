@@ -1,9 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
+from sqlalchemy.orm import Session
 
+import database
+import models
 from cfo import cfo
+
+# Ensure database tables exist
+models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Sintari Commander API", version="0.1.0")
 
