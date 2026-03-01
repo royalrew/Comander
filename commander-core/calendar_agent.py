@@ -44,9 +44,10 @@ class CalendarAgent:
         start_date format: YYYY-MM-DD
         start_time/end_time format: HH:MM
         """
+        import uuid
         events = self._load_events()
         new_event = {
-            "id": len(events) + 1,
+            "id": str(uuid.uuid4()),
             "start_date": start_date,
             "start_time": start_time,
             "end_time": end_time,
@@ -60,6 +61,31 @@ class CalendarAgent:
         
         self._save_events(events)
         return True
+
+    def update_event(self, event_id: str, start_date: str, start_time: str, description: str, end_time: str = None) -> bool:
+        events = self._load_events()
+        for i, e in enumerate(events):
+            if str(e.get("id")) == str(event_id):
+                events[i].update({
+                    "start_date": start_date,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "description": description
+                })
+                events.sort(key=lambda x: f"{x['start_date']}T{x['start_time']}")
+                self._save_events(events)
+                return True
+        return False
+
+    def delete_event(self, event_id: str) -> bool:
+        events = self._load_events()
+        original_length = len(events)
+        events = [e for e in events if str(e.get("id")) != str(event_id)]
+        
+        if len(events) < original_length:
+            self._save_events(events)
+            return True
+        return False
 
     def get_todays_events(self) -> list:
         """Returns all events for the current day."""

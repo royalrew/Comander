@@ -125,3 +125,35 @@ async def create_calendar_event(event: CalendarEventCreate):
             return {"status": "error", "message": "Failed to save event"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@app.put("/api/v1/calendar/{event_id}")
+async def update_calendar_event(event_id: str, event: CalendarEventCreate):
+    """Allows the Dashboard UI to update an existing event."""
+    from calendar_agent import calendar_agent
+    try:
+        success = calendar_agent.update_event(
+            event_id,
+            event.start_date,
+            event.start_time,
+            event.description,
+            event.end_time
+        )
+        if success:
+            return {"status": "success", "message": "Event updated"}
+        else:
+            return {"status": "error", "message": "Event not found"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.delete("/api/v1/calendar/{event_id}")
+async def delete_calendar_event(event_id: str):
+    """Allows the Dashboard UI to delete an event."""
+    from calendar_agent import calendar_agent
+    try:
+        success = calendar_agent.delete_event(event_id)
+        if success:
+            return {"status": "success", "message": "Event deleted"}
+        else:
+            return {"status": "error", "message": "Event not found"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

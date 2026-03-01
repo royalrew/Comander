@@ -14,6 +14,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState("");
+    const [editingEventId, setEditingEventId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         start_time: "09:00",
         end_time: "",
@@ -36,10 +37,35 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
     const prevMonth = () => setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
     const nextMonth = () => setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
 
-    const openModal = (dateStr: string) => {
+    const openModal = (dateStr: string, existingEvent: any = null) => {
         setSelectedDate(dateStr);
-        setFormData({ start_time: "09:00", end_time: "", description: "" });
+        if (existingEvent) {
+            setFormData({
+                start_time: existingEvent.start_time,
+                end_time: existingEvent.end_time || "",
+                description: existingEvent.description
+            });
+            setEditingEventId(existingEvent.id);
+        } else {
+            setFormData({ start_time: "09:00", end_time: "", description: "" });
+            setEditingEventId(null);
+        }
         setIsModalOpen(true);
+    };
+
+    const handleDelete = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingEventId) return;
+        setIsSubmitting(true);
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+        try {
+            await fetch(`${API_URL}/api/v1/calendar/${editingEventId}`, { method: 'DELETE' });
+            setIsModalOpen(false);
+            router.refresh();
+        } catch (error) {
+            console.error("Failed to delete event", error);
+        }
+        setIsSubmitting(false);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -47,8 +73,10 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
         setIsSubmitting(true);
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
         try {
-            await fetch(`${API_URL}/api/v1/calendar`, {
-                method: 'POST',
+            const endpoint = editingEventId ? `${API_URL}/api/v1/calendar/${editingEventId}` : `${API_URL}/api/v1/calendar`;
+            const method = editingEventId ? 'PUT' : 'POST';
+            await fetch(endpoint, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     start_date: selectedDate,
@@ -121,7 +149,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                                 </div>
                                 <div className="space-y-1">
                                     {dayEvents.map((evt: any, idx: number) => (
-                                        <div key={idx} className="bg-blue-500/10 border border-blue-500/20 rounded px-2 py-1.5 text-xs">
+                                        <div onClick={() => openModal(dateString, evt)} key={idx} className="bg-blue-500/10 border border-blue-500/20 rounded px-2 py-1.5 text-xs cursor-pointer hover:bg-blue-500/20 transition-colors">
                                             <div className="text-blue-400 font-bold flex items-center gap-1 mb-0.5">
                                                 <Clock size={10} />
                                                 {evt.start_time} {evt.end_time ? `- ${evt.end_time}` : ''}
@@ -155,10 +183,10 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                         return diffDays >= 0 && diffDays <= 7;
                     }).sort((a: any, b: any) => a.start_date.localeCompare(b.start_date) || a.start_time.localeCompare(b.start_time)).map((evt: any, idx: number) => (
-                        <div key={idx} className="glass p-4 rounded-2xl border border-white/5 flex items-center gap-6 hover:bg-white/5 transition-colors">
+                        <div onClick={() => openModal(evt.start_date, evt)} key={idx} className="glass p-4 rounded-2xl border border-white/5 flex items-center gap-6 hover:bg-white/5 transition-colors cursor-pointer group">
                             <div className="text-center min-w-[80px]">
                                 <div className="text-sm font-bold text-blue-400 uppercase tracking-widest">{new Date(evt.start_date).toLocaleDateString('sv-SE', { weekday: 'short' })}</div>
-                                <div className="text-2xl font-black text-white">{evt.start_date.split('-')[2]}</div>
+                                <div className="text-2xl font-black text-white group-hover:text-blue-400 transition-colors">{evt.start_date.split('-')[2]}</div>
                             </div>
                             <div className="w-px h-10 bg-white/10" />
                             <div className="flex-1">
@@ -188,7 +216,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                         <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 <Plus size={18} className="text-blue-400" />
-                                Ny Händelse: {selectedDate}
+                                {editingEventId ? `Ändra: ${selectedDate}` : `Ny Händelse: ${selectedDate}`}
                             </h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-white transition-colors">
                                 <X size={20} />
@@ -209,9 +237,14 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Beskrivning</label>
                                 <textarea required rows={3} placeholder="Vad händer då?" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors resize-none" />
                             </div>
-                            <div className="pt-4">
-                                <button disabled={isSubmitting} type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm tracking-widest uppercase rounded-xl transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(37,99,235,0.3)]">
-                                    {isSubmitting ? "Sparar..." : "Injektera i Hjärnan"}
+                            <div className="pt-4 flex gap-3">
+                                {editingEventId && (
+                                    <button type="button" onClick={handleDelete} disabled={isSubmitting} className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-bold text-sm tracking-widest uppercase rounded-xl transition-all disabled:opacity-50">
+                                        Ta Bort
+                                    </button>
+                                )}
+                                <button disabled={isSubmitting} type="submit" className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm tracking-widest uppercase rounded-xl transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(37,99,235,0.3)]">
+                                    {isSubmitting ? "Sparar..." : (editingEventId ? "Uppdatera Händelse" : "Injektera i Hjärnan")}
                                 </button>
                             </div>
                         </form>
