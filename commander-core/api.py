@@ -91,3 +91,37 @@ async def get_tools_status():
             "https://nextjs.org/docs/*"
         ]
     }
+
+class CalendarEventCreate(BaseModel):
+    start_date: str
+    start_time: str
+    description: str
+    end_time: str | None = None
+
+@app.get("/api/v1/calendar")
+async def get_all_calendar_events():
+    """Returns all events from the calendar database for the Dashboard UI."""
+    from calendar_agent import calendar_agent
+    try:
+        events = calendar_agent._load_events()
+        return {"status": "success", "events": events}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "events": []}
+
+@app.post("/api/v1/calendar")
+async def create_calendar_event(event: CalendarEventCreate):
+    """Allows the Dashboard UI to manually inject events into the AI's calendar."""
+    from calendar_agent import calendar_agent
+    try:
+        success = calendar_agent.add_event(
+            event.start_date,
+            event.start_time,
+            event.description,
+            event.end_time
+        )
+        if success:
+            return {"status": "success", "message": "Event created"}
+        else:
+            return {"status": "error", "message": "Failed to save event"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
