@@ -96,7 +96,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "add_calendar_event",
-            "description": "Lägger till en specifik händelse eller möte i CEO:ns kalender.",
+            "description": "Lägger till en händelse, ett möte eller en STRIKT PÅMINNELSE i kalendern. Om det är en påminnelse (tex 'påminn mig kl 15 att gå till bussen'), lägg in den med start_time 15:00. Systemet skickar en live push-notis till CEO:n exakt det klockslaget.",
             "parameters": {
                 "type": "object",
                 "properties": {

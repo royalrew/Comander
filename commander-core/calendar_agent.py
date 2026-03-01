@@ -100,6 +100,30 @@ class CalendarAgent:
         finally:
             db.close()
 
+    def get_pending_reminders(self, current_date: str, current_time: str) -> list:
+        from database import SessionLocal
+        from models import EventDB
+        db = SessionLocal()
+        try:
+            events = db.query(EventDB).filter(
+                EventDB.start_date == current_date,
+                EventDB.start_time == current_time,
+                EventDB.reminder_sent == False
+            ).all()
+            
+            pending = []
+            for e in events:
+                pending.append({"id": str(e.id), "description": e.description})
+                e.reminder_sent = True # Mark as sent immediately to prevent dupes
+            db.commit()
+            return pending
+        except Exception as e:
+            print(f"Failed to get reminders: {e}")
+            db.rollback()
+            return []
+        finally:
+            db.close()
+
     def get_todays_events(self) -> list:
         now = datetime.now(SWEDISH_TZ)
         today_str = now.strftime("%Y-%m-%d")

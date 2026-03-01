@@ -58,6 +58,21 @@ async def morning_briefing_job():
     briefing = f"🌅 **God morgon Commander!**\n\n• The Cortex Heartbeat: Stabil\n• Dagens API Spend: ${cfo.current_daily_spend:.2f}\n\n{schema_text}"
     await reporter_instance.send_morning_briefing(briefing)
 
+async def check_reminders_job():
+    """Checks for due calendar events every minute and sends reminders."""
+    from calendar_agent import calendar_agent
+    from reporter import reporter_instance
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    
+    now = datetime.now(ZoneInfo("Europe/Stockholm"))
+    current_date = now.strftime("%Y-%m-%d")
+    current_time = now.strftime("%H:%M")
+    
+    reminders = calendar_agent.get_pending_reminders(current_date, current_time)
+    for r in reminders:
+        await reporter_instance.send_alert(f"⏰ **Påminnelse:**\n{r['description']}")
+
 async def main():
     logger.info("Booting Commander Core (CEO Mode)...")
     
@@ -69,6 +84,9 @@ async def main():
     
     # Run the Morning Briefing daily at 07:00
     scheduler.add_job(morning_briefing_job, 'cron', hour=7, minute=0)
+
+    # Check for reminders every minute
+    scheduler.add_job(check_reminders_job, 'cron', minute='*')
     
     scheduler.start()
     logger.info("APScheduler Proactive Loops Started.")

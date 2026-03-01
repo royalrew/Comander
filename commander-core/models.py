@@ -10,6 +10,7 @@ class EventDB(Base):
     start_time = Column(String, nullable=False)
     end_time = Column(String, nullable=True)
     description = Column(String, nullable=False)
+    reminder_sent = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class SystemLogDB(Base):

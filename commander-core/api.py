@@ -7,9 +7,17 @@ from sqlalchemy.orm import Session
 import database
 import models
 from cfo import cfo
+from sqlalchemy import text
 
 # Ensure database tables exist
 models.Base.metadata.create_all(bind=database.engine)
+
+# Auto-migrate: Add reminder_sent column if missing
+try:
+    with database.engine.begin() as conn:
+        conn.execute(text("ALTER TABLE events ADD COLUMN reminder_sent BOOLEAN DEFAULT FALSE"))
+except Exception:
+    pass # Column already exists or other error
 
 app = FastAPI(title="Sintari Commander API", version="0.1.0")
 
