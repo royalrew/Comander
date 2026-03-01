@@ -15,18 +15,16 @@ class CalendarAgent:
         from models import EventDB
         db = SessionLocal()
         try:
-            events = db.query(EventDB).order_by(EventDB.start_date.asc(), EventDB.start_time.asc()).all()
-            return [
-                {
-                    "id": str(e.id),
-                    "start_date": e.start_date,
-                    "start_time": e.start_time,
-                    "end_time": e.end_time,
-                    "description": e.description,
-                    "created_at": e.created_at.strftime("%Y-%m-%d %H:%M:%S") if e.created_at else ""
-                }
-                for e in events
-            ]
+            events = db.query(EventDB).all()
+            return [{
+                "id": str(e.id),
+                "start_date": e.start_date,
+                "start_time": e.start_time,
+                "end_time": e.end_time,
+                "description": e.description,
+                "created_at": e.created_at.isoformat() if getattr(e, 'created_at', None) else None,
+                "is_reminder": not getattr(e, 'reminder_sent', False)
+            } for e in events]
         except Exception as e:
             print(f"Error loading calendar from DB: {e}")
             return []
@@ -38,18 +36,20 @@ class CalendarAgent:
         now = datetime.now(SWEDISH_TZ)
         return now.strftime("%Y-%m-%d %H:%M:%S (%A)")
 
-    def add_event(self, start_date: str, start_time: str, description: str, end_time: str = None) -> bool:
+    def add_event(self, start_date: str, start_time: str, description: str, end_time: str = None, is_reminder: bool = True) -> bool:
         import uuid
         from database import SessionLocal
         from models import EventDB
         db = SessionLocal()
         try:
+            event_id = str(uuid.uuid4())
             new_event = EventDB(
-                id=str(uuid.uuid4()),
+                id=event_id,
                 start_date=start_date,
                 start_time=start_time,
                 end_time=end_time,
-                description=description
+                description=description,
+                reminder_sent=not is_reminder
             )
             db.add(new_event)
             db.commit()
@@ -61,17 +61,18 @@ class CalendarAgent:
         finally:
             db.close()
 
-    def update_event(self, event_id: str, start_date: str, start_time: str, description: str, end_time: str = None) -> bool:
+    def update_event(self, event_id: str, start_date: str, start_time: str, description: str, end_time: str = None, is_reminder: bool = True) -> bool:
         from database import SessionLocal
         from models import EventDB
         db = SessionLocal()
         try:
-            event = db.query(EventDB).filter(EventDB.id == str(event_id)).first()
+            event = db.query(EventDB).filter(EventDB.id == event_id).first()
             if event:
                 event.start_date = start_date
                 event.start_time = start_time
-                event.end_time = end_time
                 event.description = description
+                event.end_time = end_time
+                event.reminder_sent = not is_reminder
                 db.commit()
                 return True
             return False

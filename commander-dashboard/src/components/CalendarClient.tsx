@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Calendar as CalendarIcon, Clock, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, X, Bell } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function CalendarClient({ initialEvents, hasError }: { initialEvents: any[], hasError: boolean }) {
@@ -18,7 +18,8 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
     const [formData, setFormData] = useState({
         start_time: "09:00",
         end_time: "",
-        description: ""
+        description: "",
+        is_reminder: true
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,11 +44,12 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
             setFormData({
                 start_time: existingEvent.start_time,
                 end_time: existingEvent.end_time || "",
-                description: existingEvent.description
+                description: existingEvent.description,
+                is_reminder: existingEvent.is_reminder !== false // Default to true if undefined
             });
             setEditingEventId(existingEvent.id);
         } else {
-            setFormData({ start_time: "09:00", end_time: "", description: "" });
+            setFormData({ start_time: "09:00", end_time: "", description: "", is_reminder: true });
             setEditingEventId(null);
         }
         setIsModalOpen(true);
@@ -153,6 +155,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                                             <div className="text-blue-400 font-bold flex items-center gap-1 mb-0.5">
                                                 <Clock size={10} />
                                                 {evt.start_time} {evt.end_time ? `- ${evt.end_time}` : ''}
+                                                {evt.is_reminder && <Bell size={10} className="ml-auto text-yellow-500" />}
                                             </div>
                                             <div className="text-zinc-300 leading-tight line-clamp-2" title={evt.description}>
                                                 {evt.description}
@@ -194,6 +197,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                                 <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                                     <Clock size={14} />
                                     {evt.start_time} {evt.end_time ? `- ${evt.end_time}` : ''}
+                                    {evt.is_reminder && <span className="flex items-center gap-1 text-yellow-500/80 ml-2"><Bell size={12} /> Telegram-Notis Aktiv</span>}
                                 </div>
                             </div>
                             <div>
@@ -237,6 +241,13 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Beskrivning</label>
                                 <textarea required rows={3} placeholder="Vad händer då?" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors resize-none" />
                             </div>
+                            <label className="flex items-center gap-3 p-3 bg-black/20 border border-white/5 rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
+                                <input type="checkbox" checked={formData.is_reminder} onChange={(e) => setFormData({ ...formData, is_reminder: e.target.checked })} className="w-4 h-4 rounded bg-black/40 border-white/10 text-blue-500 focus:ring-blue-500/50" />
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-white flex items-center gap-2"><Bell size={14} className="text-yellow-500" /> Telegram-Påminnelse</span>
+                                    <span className="text-xs text-muted-foreground">The Commander pingar dig i Telegram exakt kl {formData.start_time}.</span>
+                                </div>
+                            </label>
                             <div className="pt-4 flex gap-3">
                                 {editingEventId && (
                                     <button type="button" onClick={handleDelete} disabled={isSubmitting} className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-bold text-sm tracking-widest uppercase rounded-xl transition-all disabled:opacity-50">

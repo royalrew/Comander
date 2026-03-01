@@ -111,6 +111,7 @@ class CalendarEventCreate(BaseModel):
     start_time: str
     description: str
     end_time: str | None = None
+    is_reminder: bool = True
 
 @app.get("/api/v1/calendar")
 async def get_all_calendar_events():
@@ -131,7 +132,8 @@ async def create_calendar_event(event: CalendarEventCreate):
             event.start_date,
             event.start_time,
             event.description,
-            event.end_time
+            event.end_time,
+            event.is_reminder
         )
         if success:
             return {"status": "success", "message": "Event created"}
@@ -150,7 +152,8 @@ async def update_calendar_event(event_id: str, event: CalendarEventCreate):
             event.start_date,
             event.start_time,
             event.description,
-            event.end_time
+            event.end_time,
+            event.is_reminder
         )
         if success:
             return {"status": "success", "message": "Event updated"}
