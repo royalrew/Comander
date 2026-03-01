@@ -57,7 +57,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
         e.preventDefault();
         if (!editingEventId) return;
         setIsSubmitting(true);
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://comander-production.up.railway.app';
         try {
             await fetch(`${API_URL}/api/v1/calendar/${editingEventId}`, { method: 'DELETE' });
             setIsModalOpen(false);
@@ -71,7 +71,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://comander-production.up.railway.app';
         try {
             const endpoint = editingEventId ? `${API_URL}/api/v1/calendar/${editingEventId}` : `${API_URL}/api/v1/calendar`;
             const method = editingEventId ? 'PUT' : 'POST';

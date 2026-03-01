@@ -3,7 +3,7 @@ import CalendarClient from '@/components/CalendarClient';
 
 export const dynamic = 'force-dynamic';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://comander-production.up.railway.app';
 
 async function getCalendarEvents() {
     try {
