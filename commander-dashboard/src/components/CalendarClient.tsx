@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Calendar as CalendarIcon, Clock, AlertCircle, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function CalendarClient({ initialEvents, hasError }: { initialEvents: any[], hasError: boolean }) {
     const router = useRouter();
-    const [events] = useState(initialEvents);
+    const events = initialEvents;
+
+    // View state
+    const [currentDate, setCurrentDate] = useState(new Date());
 
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,14 +22,19 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
     const startingDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
     const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     const blanksArray = Array.from({ length: startingDay }, (_, i) => i);
     const monthNames = ["Januari", "Februari", "Mars", "April", "Maj", "Juni", "Juli", "Augusti", "September", "Oktober", "November", "December"];
+
+    const prevYear = () => setCurrentDate(new Date(currentYear - 1, currentMonth, 1));
+    const nextYear = () => setCurrentDate(new Date(currentYear + 1, currentMonth, 1));
+    const prevMonth = () => setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
+    const nextMonth = () => setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
 
     const openModal = (dateStr: string) => {
         setSelectedDate(dateStr);
@@ -68,15 +76,21 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                         {hasError && <span className="text-xs text-red-400 bg-red-400/10 px-2 py-0.5 rounded border border-red-400/20 flex items-center gap-1"><AlertCircle size={12} /> API Offline</span>}
                     </p>
                 </div>
-                <div className="flex items-center gap-4 bg-black/40 p-2 rounded-xl border border-white/5">
-                    <button className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <div className="flex items-center gap-2 bg-black/40 p-2 rounded-xl border border-white/5">
+                    <button onClick={prevYear} className="p-1 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground/50 hover:text-muted-foreground">
+                        <ChevronsLeft size={16} />
+                    </button>
+                    <button onClick={prevMonth} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                         <ChevronLeft size={20} className="text-muted-foreground" />
                     </button>
-                    <span className="font-bold text-white uppercase tracking-widest text-sm w-32 text-center">
+                    <span className="font-bold text-white uppercase tracking-widest text-sm w-36 text-center">
                         {monthNames[currentMonth]} {currentYear}
                     </span>
-                    <button className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                    <button onClick={nextMonth} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                         <ChevronRight size={20} className="text-muted-foreground" />
+                    </button>
+                    <button onClick={nextYear} className="p-1 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground/50 hover:text-muted-foreground">
+                        <ChevronsRight size={16} />
                     </button>
                 </div>
             </header>
