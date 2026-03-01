@@ -8,6 +8,7 @@ from cfo import cfo, TokenLimitExceeded
 from io_jail import list_files, read_file
 from surgeon import surgeon
 from observer import observer
+from calendar_agent import calendar_agent
 
 load_dotenv()
 
@@ -76,6 +77,51 @@ TOOLS_SCHEMA = [
                 "required": ["filepath", "command_list"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "memorize_fact",
+            "description": "Saves an important fact about the user, project, or context to Long-Term Persistent Memory. Use this when the user says 'Remember that...' or tells you a fact about themselves.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fact": {"type": "string", "description": "The information to remember permanently (e.g., 'The CEO's name is Jimmy')"}
+                },
+                "required": ["fact"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_calendar_event",
+            "description": "Lägger till en specifik händelse eller möte i CEO:ns kalender.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_date": {"type": "string", "description": "Datum för händelsen, format: YYYY-MM-DD"},
+                    "start_time": {"type": "string", "description": "Starttid, format: HH:MM"},
+                    "end_time": {"type": "string", "description": "Optional: Sluttid, format: HH:MM"},
+                    "description": {"type": "string", "description": "Beskrivning: Vad är händelsen?"}
+                },
+                "required": ["start_date", "start_time", "description"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_calendar_events",
+            "description": "Hämtar inplanerade kalender-händelser. Använd detta om användaren frågar 'Vad händer imorgon?' eller 'Hur ser mitt schema ut?'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {"type": "integer", "description": "Hur många mellankommande dagar framåt att visa händelser för (ex 1 = imorgon, 7 = hela veckan)"}
+                },
+                "required": ["days"]
+            }
+        }
     }
 ]
 
@@ -105,6 +151,19 @@ class ModelOrchestrator:
             elif name == "validate_code":
                 success = surgeon.validate_code(args["filepath"], args["command_list"])
                 return "Validation passed! Zero errors." if success else "Validation failed after maximum self-correction retries."
+            elif name == "memorize_fact":
+                fact = args["fact"]
+                memory_file = os.path.join(os.path.dirname(__file__), 'global_memory.txt')
+                with open(memory_file, "a", encoding="utf-8") as f:
+                    f.write(f"- {fact}\n")
+                return f"Fact successfully memorized: {fact}"
+            elif name == "add_calendar_event":
+                success = calendar_agent.add_event(args["start_date"], args["start_time"], args["description"], args.get("end_time"))
+                return f"Händelse ({args['description']}) inlagd på datumet {args['start_date']} kl {args['start_time']}." if success else "Kunde inte lägga till händelsen."
+            elif name == "get_calendar_events":
+                events = calendar_agent.get_upcoming_events(args["days"])
+                if not events: return "Kalendern är helt tom under den valda tidsperioden."
+                return "Kalenderhändelser:\n" + "\n".join([f"- {e['start_date']} {e['start_time']}: {e['description']}" for e in events])
             else:
                 return f"Tool '{name}' not found."
         except Exception as e:
@@ -182,11 +241,29 @@ class ModelOrchestrator:
                 "När du stöter på en begränsning, ge istället direkta, strategiska förslag på hur användaren kan nå sina mål. "
                 "Skilj tydligt på när ni bara pratar/spånar idéer och när du faktiskt bygger eller exekverar kod. "
                 "Inget robot-snack, inga hashtags. Svara kortfattat, mänskligt och professionellt.\n\n"
+                "ENTERPRISE GRC RULES (MUST OBEY):\n"
+                "1. Golden Tech Stack: PostgreSQL, Neo4j, Next.js. Refuse other stacks (e.g. MongoDB, Vue).\n"
+                "2. Microsoft First: Ingestion MVP is strictly limited to Microsoft 365 (Graph API). Refuse Google Workspace.\n"
+                "3. No-Todo Policy: Never leave `# TODO` or `pass` in code. Break down complex functions instead.\n"
+                "4. Error Handling: Never use generic `try/except: pass`. Log specific exceptions.\n"
+                "5. Generative UI: Suggest and provide UI components (React Server Components) over text summaries when visualizing data.\n\n"
                 "CRITICAL DIRECTIVE - AUTONOMOUS ACTION: Du är en operativ AI, inte en guide. "
                 "Om användaren ber dig skapa, ändra, felsöka eller radera kod MÅSTE du omedelbart använda dina verktyg (t.ex. refactor_file). "
                 "Du får under INGA omständigheter be användaren att öppna en textredigerare, och du får ALDRIG skriva ut kod i chatten med uppmaningen 'kopiera och klistra in'. "
                 "Du gör jobbet. Användaren inspekterar resultatet."
             )
+
+        # Inject Long-Term Persistent Memory
+        memory_file = os.path.join(os.path.dirname(__file__), 'global_memory.txt')
+        if os.path.exists(memory_file):
+            with open(memory_file, "r", encoding="utf-8") as f:
+                persistent_memory = f.read()
+            if persistent_memory.strip():
+                system_prompt += f"\n\nCRITICAL FACTS (LONG-TERM MEMORY):\n{persistent_memory}"
+
+        # Inject Real-World Temporal Awareness
+        temporal_state = calendar_agent.get_current_time_str()
+        system_prompt += f"\n\nAKTUELL TID (Sverige): {temporal_state}\n\n*Notera: Om användaren ber dig lägga till något i kalendern ('nästa måndag', 'imorgon kl 15'), använd detta klockslag för att räkna ut rätt YYYY-MM-DD och anropa sedan `add_calendar_event`.*"
 
         messages = [{"role": "system", "content": system_prompt}]
         

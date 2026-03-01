@@ -45,7 +45,17 @@ async def watchdog_heartbeat():
 
 async def morning_briefing_job():
     """Generates and sends the daily summary via the Reporter."""
-    briefing = "Good morning Commander.\n• Heartbeat: Stable\n• Stripe Revenue: $0.00\n• API Spend: $0.12\n• Active Missions: 2\n"
+    from calendar_agent import calendar_agent
+    from cfo import cfo
+    
+    events = calendar_agent.get_todays_events()
+    
+    if events:
+        schema_text = "Dagens Schema (Bokat):\n" + "\n".join([f"• {e['start_time']}: {e['description']}" for e in events])
+    else:
+        schema_text = "Dagens Schema: (Helt rent. Du har kontrollen.)"
+        
+    briefing = f"🌅 **God morgon Commander!**\n\n• The Cortex Heartbeat: Stabil\n• Dagens API Spend: ${cfo.current_daily_spend:.2f}\n\n{schema_text}"
     await reporter_instance.send_morning_briefing(briefing)
 
 async def main():
@@ -63,8 +73,16 @@ async def main():
     scheduler.start()
     logger.info("APScheduler Proactive Loops Started.")
 
-    # 2. Start the interactive Telegram listening loop (Blocking operation)
-    await start_telegram_polling()
+    # 2. Start the API Server and Telegram polling concurrently
+    import uvicorn
+    config = uvicorn.Config(app="api:app", host="127.0.0.1", port=8000, loop="asyncio")
+    server = uvicorn.Server(config)
+    
+    logger.info("Starting FastAPI & Telegram Polling concurrently...")
+    await asyncio.gather(
+        server.serve(),
+        start_telegram_polling()
+    )
 
 if __name__ == "__main__":
     try:

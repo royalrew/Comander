@@ -33,5 +33,5 @@ aiogram==3.10.0
 stripe==10.4.0
 
 # Database
-psycopg2-binary==2.9.9 # or asyncpg if fully async
+# psycopg2-binary==2.9.9 # Removed temporarily to fix Windows build err
 sqlalchemy==2.0.31
