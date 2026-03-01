@@ -12,8 +12,8 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-# Safely parse the ID as a string and strip whitespace to prevent type errors
-AUTHORIZED_USER = str(os.getenv("TELEGRAM_AUTHORIZED_USER_ID", "123456789")).strip()
+# Safely parse IDs as a list of strings
+AUTHORIZED_USERS = [u.strip() for u in os.getenv("TELEGRAM_AUTHORIZED_USER_ID", "123456789").split(',')]
 
 if not TELEGRAM_TOKEN:
     raise ValueError("CRITICAL: TELEGRAM_BOT_TOKEN environment variable is missing.")
@@ -47,7 +47,7 @@ class Reporter:
 
     async def verify_user(self, message: types.Message) -> bool:
         """Verifies if the sender is the authorized CEO."""
-        if str(message.from_user.id) != AUTHORIZED_USER:
+        if str(message.from_user.id) not in AUTHORIZED_USERS:
             await message.reply(f"Åtkomst Nekad. Du är inte auktoriserad att ge mig order. (Ditt ID: {message.from_user.id})")
             return False
         return True
@@ -55,22 +55,24 @@ class Reporter:
     async def send_morning_briefing(self, briefing_text: str):
         """Sends the daily Morning Briefing."""
         try:
-            await self.bot.send_message(
-                chat_id=AUTHORIZED_USER,
-                text=f"🌅 **Morgonrapport - CEO Mode**\n\n{briefing_text}",
-                parse_mode="Markdown"
-            )
+            for user in AUTHORIZED_USERS:
+                await self.bot.send_message(
+                    chat_id=user,
+                    text=f"🌅 **Morgonrapport - CEO Mode**\n\n{briefing_text}",
+                    parse_mode="Markdown"
+                )
         except Exception as e:
             logging.error(f"Failed to send morning briefing: {e}")
 
     async def send_alert(self, alert_text: str):
         """Sends an immediate proactive alert."""
         try:
-            await self.bot.send_message(
-                chat_id=AUTHORIZED_USER,
-                text=f"⚠️ **PROAKTIV VARNING**\n\n{alert_text}",
-                parse_mode="Markdown"
-            )
+            for user in AUTHORIZED_USERS:
+                await self.bot.send_message(
+                    chat_id=user,
+                    text=f"⚠️ **PROAKTIV VARNING**\n\n{alert_text}",
+                    parse_mode="Markdown"
+                )
         except Exception as e:
             logging.error(f"Failed to send alert: {e}")
 
