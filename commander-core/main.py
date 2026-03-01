@@ -93,10 +93,11 @@ async def main():
 
     # 2. Start the API Server and Telegram polling concurrently
     import uvicorn
-    config = uvicorn.Config(app="api:app", host="127.0.0.1", port=8000, loop="asyncio")
+    port = int(os.environ.get("PORT", "8000"))
+    config = uvicorn.Config(app="api:app", host="0.0.0.0", port=port, loop="asyncio")
     server = uvicorn.Server(config)
     
-    logger.info("Starting FastAPI & Telegram Polling concurrently...")
+    logger.info(f"Starting FastAPI on 0.0.0.0:{port} & Telegram Polling concurrently...")
     await asyncio.gather(
         server.serve(),
         start_telegram_polling()
