@@ -47,6 +47,7 @@ async def morning_briefing_job():
     """Generates and sends the daily summary via the Reporter."""
     from calendar_agent import calendar_agent
     from cfo import cfo
+    from audit_module import audit_module
     
     events = calendar_agent.get_todays_events()
     
@@ -55,7 +56,9 @@ async def morning_briefing_job():
     else:
         schema_text = "Dagens Schema: (Helt rent. Du har kontrollen.)"
         
-    briefing = f"🌅 **God morgon Commander!**\n\n• The Cortex Heartbeat: Stabil\n• Dagens API Spend: ${cfo.current_daily_spend:.2f}\n\n{schema_text}"
+    audit_text = audit_module.generate_audit_report()
+        
+    briefing = f"🌅 **God morgon Commander!**\n\n• The Cortex Heartbeat: Stabil\n• Dagens API Spend: ${cfo.current_daily_spend:.2f}\n\n{schema_text}\n\n{audit_text}"
     await reporter_instance.send_morning_briefing(briefing)
 
 async def check_reminders_job():
