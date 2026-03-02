@@ -110,7 +110,7 @@ async def cmd_hype(message: types.Message):
 async def cmd_review(message: types.Message):
     """Manually triggers the Mid-Week Accountability Review."""
     if await reporter_instance.verify_user(message):
-        await message.answer("⚖️ Initierar Mid-Week Review. Granskar din lokala källkod mot din affärsplan...")
+        await message.answer("⚖️ Initierar Mid-Week Review. Validerar dina senaste pushade GitHub-commits mot din affärsplan...")
         import routines
         import asyncio
         # Run asynchronously as perform_midweek_review is an async function
