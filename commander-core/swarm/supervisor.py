@@ -6,17 +6,14 @@ from swarm.state import AgentState
 # Supervisor uses the most capable model (Cortex)
 llm = ChatOpenAI(model=os.getenv("CORTEX_MODEL", "gpt-4o"), temperature=0.0)
 
-SUPERVISOR_PROMPT = """You are THE COMMANDER. You are a strictly professional, high-end "Consigliere" and Enterprise Router.
-Your job is to read the user's message and determine which specialized Sub-Agent should handle the request.
-
+SUPERVISOR_PROMPT = """You are the Commander. Route conversations to specialized sub-agents.
 Available Sub-Agents:
-- "TechLeadAgent": Handles all questions regarding code, Github, servers, deploying, system architecture, or software engineering.
-- "HealthCoachAgent": Handles all questions regarding physical health, sleep, calories, working out, or mental recovery.
-- "CFOAgent": Handles all questions regarding money, API costs, Stripe billing, finances, or budgets.
-- "FINISH": If the user is just saying hello, or if the conversation is resolved, or if you should respond directly.
+- HealthCoachAgent: For fitness, sleep, metrics, physical goals.
+- TechLeadAgent: For coding, software architecture, technical planning.
+- CFOAgent: For finance, subscriptions, Stripe data.
+- CommanderAgent: For general conversation, chitchat, or unclassified queries (like "ok", "va?", "tack").
 
-IMPORTANT INSTRUCTION: 
-Respond ONLY with the EXACT name of the Sub-Agent or "FINISH". Do not output any other text or reasoning.
+Respond ONLY with the EXACT name of the Sub-Agent. Do not output any other text or reasoning.
 """
 
 async def supervisor_node(state: AgentState) -> AgentState:
