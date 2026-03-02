@@ -8,6 +8,7 @@ from cfo import cfo, TokenLimitExceeded
 from io_jail import list_files, read_file
 from observer import observer
 from calendar_agent import calendar_agent
+from research_module import research_module
 
 load_dotenv()
 
@@ -40,6 +41,35 @@ TOOLS_SCHEMA = [
                     "filepath": {"type": "string", "description": "Relative or absolute path to the file"}
                 },
                 "required": ["filepath"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_internet",
+            "description": "Searches the web for up-to-date information, documentation, market research, or competitor analysis.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "The search term"},
+                    "max_results": {"type": "integer", "description": "Maximum number of results to retrieve (default 5, max 10)"}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_webpage",
+            "description": "Fetches and reads the text content of a specific webpage URL found via search_internet. Automatically respects robots.txt.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "The full HTTPS URL of the webpage to read"}
+                },
+                "required": ["url"]
             }
         }
     },
@@ -111,6 +141,10 @@ class ModelOrchestrator:
                 return str(list_files(args["mission_name"]))
             elif name == "read_file":
                 return read_file(args["filepath"])
+            elif name == "search_internet":
+                return research_module.search_internet(args["query"], max_results=args.get("max_results", 5))
+            elif name == "read_webpage":
+                return research_module.read_webpage(args["url"])
             elif name == "memorize_fact":
                 fact = args["fact"]
                 category = args.get("category", "General")
