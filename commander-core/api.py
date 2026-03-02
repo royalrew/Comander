@@ -21,6 +21,10 @@ except Exception:
 
 app = FastAPI(title="Sintari Commander API", version="0.1.0")
 
+# Import the new LangGraph Swarm Router
+from router import api_router
+app.include_router(api_router)
+
 # Allow the Next.js dashboard to access this API
 app.add_middleware(
     CORSMiddleware,
