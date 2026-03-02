@@ -7,6 +7,9 @@ import {
     Target,
     Settings,
     PowerOff,
+    DollarSign,
+    HeartPulse,
+    Activity,
     Cpu,
     Calendar,
 } from 'lucide-react';
@@ -14,6 +17,9 @@ import {
 export default function Sidebar() {
     const navItems = [
         { name: 'Översikt', icon: Home, href: '/' },
+        { name: 'Tech Lead Agent', icon: Cpu, href: '/agents/tech' },
+        { name: 'Health Agent', icon: HeartPulse, href: '/agents/health' },
+        { name: 'CFO Agent', icon: DollarSign, href: '/agents/finance' },
         { name: 'Minne & Konvergens', icon: Database, href: '/memory' },
         { name: 'Kalender', icon: Calendar, href: '/calendar' },
         { name: 'Verktyg & Arsenal', icon: Wrench, href: '/tools' },
