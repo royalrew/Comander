@@ -52,7 +52,12 @@ async def perform_midweek_review():
     user_prompt = f"CEO MÅL:\n{ceo_goals}\n\nVECKANS TILLSTÅND (REALITY):\n{reality_context}"
 
     try:
-        review_text = router.ask_cortex(user_prompt, system_prompt=system_prompt)
+        import asyncio
+        review_text = await asyncio.to_thread(
+            router.ask_cortex,
+            user_prompt=user_prompt,
+            system_prompt=system_prompt
+        )
         final_message = f"⚖️ **MID-WEEK REVIEW**\n\n{review_text}"
         await reporter_instance.send_alert(final_message)
     except Exception as e:
