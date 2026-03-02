@@ -63,10 +63,19 @@ class ModelOrchestrator:
         The new async gateway for internal Telegram/Cron jobs to reach the Swarm.
         """
         try:
-            # We convert the history (dict) to HumanMessage/AIMessage later if needed,
-            # but for now, we just pass the user prompt to the swarm.
+            langchain_messages = []
+            if history:
+                from langchain_core.messages import AIMessage
+                for msg in history:
+                    if msg.get("role") == "user":
+                        langchain_messages.append(HumanMessage(content=msg.get("content", "")))
+                    elif msg.get("role") == "assistant":
+                        langchain_messages.append(AIMessage(content=msg.get("content", "")))
+                        
+            langchain_messages.append(HumanMessage(content=user_prompt))
+
             initial_state = {
-                "messages": [HumanMessage(content=user_prompt)],
+                "messages": langchain_messages,
                 "active_dashboard_tab": "overview",
                 "dashboard_data": {},
                 "next_step": None
