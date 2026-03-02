@@ -11,7 +11,11 @@ litellm==1.41.24
 
 # Memory & Search
 opensearch-py==2.6.0
+Pillow
 duckduckgo-search
+langgraph
+langchain-core
+langchain-openai
 # Parsing
 tree-sitter==0.22.3
 # Usually needs language specific bindings like tree-sitter-python, tree-sitter-typescript
