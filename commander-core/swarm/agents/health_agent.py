@@ -17,18 +17,24 @@ REGLER:
 5. Din output visas under 'HEALTH AGENT' på the Commander Dashboard.
 """
 
-# Compile the ReAct agent loops
-agent_runnable = create_react_agent(llm, tools=[memorize_fact], state_modifier=HEALTH_COACH_PROMPT)
+from langchain_core.messages import SystemMessage
+
+# Compile the ReAct agent loops (without version-dependent kwargs)
+agent_runnable = create_react_agent(llm, tools=[memorize_fact])
 
 async def health_coach_node(state: AgentState) -> AgentState:
     """The Health Coach specialized agent."""
     messages = state["messages"]
     
+    # 1. Dynamically inject the System Persona to bypass any LangGraph kwargs bugs
+    system_message = SystemMessage(content=HEALTH_COACH_PROMPT)
+    input_payload = [system_message] + messages
+    
     # Run the compiled ReAct agent
-    result = await agent_runnable.ainvoke({"messages": messages})
+    result = await agent_runnable.ainvoke({"messages": input_payload})
     
     # Extract ONLY the newly generated messages (ToolCalls, ToolOutputs, AI replies)
-    new_messages = result["messages"][len(messages):]
+    new_messages = result["messages"][len(input_payload):]
     
     return {
         "messages": new_messages,
