@@ -18,7 +18,7 @@ REGLER:
 """
 
 # Compile the ReAct agent loops
-agent_runnable = create_react_agent(llm, tools=[memorize_fact], messages_modifier=HEALTH_COACH_PROMPT)
+agent_runnable = create_react_agent(llm, tools=[memorize_fact], state_modifier=HEALTH_COACH_PROMPT)
 
 async def health_coach_node(state: AgentState) -> AgentState:
     """The Health Coach specialized agent."""
