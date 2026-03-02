@@ -19,13 +19,13 @@ IMPORTANT INSTRUCTION:
 Respond ONLY with the EXACT name of the Sub-Agent or "FINISH". Do not output any other text or reasoning.
 """
 
-def supervisor_node(state: AgentState) -> AgentState:
+async def supervisor_node(state: AgentState) -> AgentState:
     """The Commander decides who should speak next."""
     messages = state["messages"]
     
     # Send the history to the LLM with the supervisor prompt
     system_message = SystemMessage(content=SUPERVISOR_PROMPT)
-    response = llm.invoke([system_message] + messages)
+    response = await llm.ainvoke([system_message] + messages)
     
     decision = response.content.strip().replace('"', '').replace("'", "")
     
