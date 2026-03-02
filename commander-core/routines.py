@@ -30,13 +30,13 @@ async def perform_midweek_review():
 
     # 2. Check the Reality (What has the CEO coded the last 3 days?)
     # Using 72 hours to cover Mon-Wed activity
-    recent_files = audit_module.get_recent_files(hours=72, max_files=10)
+    recent_activity = audit_module.get_recent_activity(hours=72)
     
     reality_context = ""
-    if not recent_files:
-        reality_context = "Loggar visar noll (0) ändrade kodfiler i projektet de senaste 3 dagarna."
+    if "Inga kod-commits" in recent_activity or "Inget" in recent_activity or "Kunde inte komma åt" in recent_activity:
+        reality_context = f"GitHub Loggar:\n{recent_activity}\n(Antingen har CEO inte pushat något, eller så är repot dolt utan token)."
     else:
-        reality_context = f"VD:n har under de senaste 3 dagarna modifierat följande systemkritiska filer:\n" + "\n".join(recent_files)
+        reality_context = f"VD:n har under de senaste 3 dagarna pushat följande commits till GitHub:\n{recent_activity}"
 
     # 3. The Analysis
     system_prompt = (
