@@ -106,6 +106,16 @@ async def cmd_hype(message: types.Message):
     if await reporter_instance.verify_user(message):
         await message.answer("🔥 Triggering manual Hype job for Real Estate presets. [Feature Pending]")
 
+@dp.message(Command("review"))
+async def cmd_review(message: types.Message):
+    """Manually triggers the Mid-Week Accountability Review."""
+    if await reporter_instance.verify_user(message):
+        await message.answer("⚖️ Initierar Mid-Week Review. Granskar din lokala källkod mot din affärsplan...")
+        import routines
+        import asyncio
+        # Run asynchronously as perform_midweek_review is an async function
+        await routines.perform_midweek_review()
+
 # ==========================================
 # CHAT HANDLER (Modell-Lera / Conversational Mode)
 # ==========================================

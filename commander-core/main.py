@@ -86,6 +86,10 @@ async def main():
     # Run the Watchdog Heartbeat every hour
     scheduler.add_job(watchdog_heartbeat, 'interval', minutes=60)
     
+    # Run the Mid-Week Review on Wednesdays at 14:00
+    import routines
+    scheduler.add_job(routines.perform_midweek_review, 'cron', day_of_week='wed', hour=14, minute=0)
+    
     # Run the Morning Briefing daily at 07:00
     scheduler.add_job(morning_briefing_job, 'cron', hour=7, minute=0)
 
