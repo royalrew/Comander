@@ -159,7 +159,7 @@ async def chat_handler(message: types.Message):
 
 @dp.callback_query()
 async def callbacks_handlers(callback: types.CallbackQuery):
-    if str(callback.from_user.id) != AUTHORIZED_USER:
+    if str(callback.from_user.id) not in AUTHORIZED_USERS:
         await callback.answer("Åtkomst Nekad", show_alert=True)
         return
 

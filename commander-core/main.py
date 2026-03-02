@@ -77,7 +77,8 @@ async def main():
     logger.info("Booting Commander Core (CEO Mode)...")
     
     # 1. Start the Proactive Scheduler
-    scheduler = AsyncIOScheduler()
+    from zoneinfo import ZoneInfo
+    scheduler = AsyncIOScheduler(timezone=ZoneInfo("Europe/Stockholm"))
     
     # Run the Watchdog Heartbeat every hour
     scheduler.add_job(watchdog_heartbeat, 'interval', minutes=60)
