@@ -11,6 +11,8 @@ import {
   Globe,
   DollarSign
 } from 'lucide-react';
+import CortexMonitor from '@/components/CortexMonitor';
+import FinanceCard from '@/components/FinanceCard';
 
 async function getCfoStatus() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://comander-production.up.railway.app';
@@ -79,123 +81,80 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
         {/* The Cortex Monitor */}
-        <div className="p-8 glass rounded-3xl border border-white/5 flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold flex items-center gap-3">
-              <Cpu className="text-blue-500" />
-              The Cortex Monitor
-            </h2>
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-              </span>
-            </div>
-          </div>
+        <CortexMonitor />
 
-          {/* Memory Timeline */}
-          <div className="p-4 rounded-2xl bg-black/20 border border-white/5">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Memory Timeline</h3>
-            <div className="space-y-3">
+        {/* Right Column: Finance, Arsenal, Watchdog */}
+        <div className="flex flex-col gap-8 col-span-1">
+          <FinanceCard initialData={cfoData} />
+
+          {/* Arsenal Control */}
+          <div className="p-8 glass rounded-3xl border border-white/5 flex flex-col gap-6">
+            <h2 className="text-xl font-bold flex items-center gap-3">
+              <Lock className="text-amber-500" />
+              Arsenal Control
+            </h2>
+
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Aktivt Verktygsbälte</h3>
               {[
-                { time: '10 min sedan', action: 'Laddade upp test_golden.py till OpenSearch' },
-                { time: '45 min sedan', action: 'Raderade minnet av gpt-4-turbo konversationen' },
-                { time: '2 tim sedan', action: 'Inbäddade 48 nya AST noder' }
-              ].map((mem, i) => (
-                <div key={i} className="flex justify-between items-center bg-white/5 p-2 rounded text-sm">
-                  <span className="text-muted-foreground text-xs">{mem.time}</span>
-                  <span className="truncate ml-4 max-w-[200px]">{mem.action}</span>
+                { name: 'refactor_file (Surgeon)', active: true },
+                { name: 'list_files (IO Jail)', active: true },
+                { name: 'web_scraper (Selenium)', active: false },
+                { name: 'database_query (Neo4j)', active: false }
+              ].map((tool, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                  <span className="text-sm font-medium">{tool.name}</span>
+                  <div className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${tool.active ? 'bg-primary' : 'bg-secondary'}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${tool.active ? 'left-[22px]' : 'left-0.5'}`} />
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
 
-          {/* CFO Spend */}
-          <div className="p-4 rounded-2xl bg-black/20 border border-white/5 relative overflow-hidden">
-            <div className="absolute top-0 left-0 h-1 bg-white/10 w-full">
-              <div className={`h-full ${spendPercentage > 80 ? 'bg-red-500' : 'bg-emerald-500'} transition-all`} style={{ width: `${spendPercentage}%` }} />
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <div>
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-2">
-                  CFO Token Spend (Idag)
-                  {!cfoData && <span className="text-[10px] text-red-400 bg-red-400/10 px-1 rounded border border-red-400/20">Offline</span>}
-                </h3>
-                <p className={`text-2xl font-bold ${spendPercentage > 80 ? 'text-red-400' : 'text-emerald-400'}`}>${spend}</p>
-                <p className="text-xs text-muted-foreground mt-1">/ ${limit} Daglig Gräns</p>
-              </div>
-              <Activity className={spendPercentage > 80 ? 'text-red-500/50' : 'text-emerald-500/50'} size={32} />
-            </div>
-          </div>
-        </div>
-
-        {/* Arsenal Control */}
-        <div className="p-8 glass rounded-3xl border border-white/5 flex flex-col gap-6">
-          <h2 className="text-xl font-bold flex items-center gap-3">
-            <Lock className="text-amber-500" />
-            Arsenal Control
-          </h2>
-
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Aktivt Verktygsbälte</h3>
-            {[
-              { name: 'refactor_file (Surgeon)', active: true },
-              { name: 'list_files (IO Jail)', active: true },
-              { name: 'web_scraper (Selenium)', active: false },
-              { name: 'database_query (Neo4j)', active: false }
-            ].map((tool, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
-                <span className="text-sm font-medium">{tool.name}</span>
-                <div className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${tool.active ? 'bg-primary' : 'bg-secondary'}`}>
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${tool.active ? 'left-[22px]' : 'left-0.5'}`} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-auto">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Scraping Whitelist</h3>
-            <textarea
-              className="w-full h-24 p-3 rounded-xl bg-black/40 border border-white/10 text-sm text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
-              defaultValue={"github.com/royalrew/*\nnews.ycombinator.com\nstripe.com/docs/*"}
-            />
-          </div>
-        </div>
-
-        {/* The Watchdog Planner */}
-        <div className="p-8 glass rounded-3xl border border-white/5 flex flex-col gap-6">
-          <h2 className="text-xl font-bold flex items-center gap-3">
-            <Zap className="text-purple-500" />
-            The Watchdog Planner
-          </h2>
-
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Schemalagda Uppdrag</h3>
-            {[
-              { schedule: 'Varje timme', desc: 'Läs RSS efter nya GRC-lagar' },
-              { schedule: 'Kl 04:00', desc: 'Rensa temp-filer & städa RAM' },
-              { schedule: 'Kl 08:00', desc: 'Generera Morning Briefing till Telegram' }
-            ].map((task, i) => (
-              <div key={i} className="flex gap-3 items-start p-3 bg-white/5 rounded-lg border border-white/5 border-l-2 border-l-purple-500">
-                <div className="text-xs font-mono text-purple-400 mt-0.5 min-w-[70px]">{task.schedule}</div>
-                <div className="text-sm text-gray-300 leading-tight">{task.desc}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-auto pt-4 border-t border-white/10">
-            <h3 className="text-xs font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-              <AlertCircle size={14} /> Goal Override
-            </h3>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Injicera nytt högprioriterat mål..."
-                className="flex-1 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-sm focus:outline-none focus:border-red-500/50"
+            <div className="mt-auto">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Scraping Whitelist</h3>
+              <textarea
+                className="w-full h-24 p-3 rounded-xl bg-black/40 border border-white/10 text-sm text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
+                defaultValue={"github.com/royalrew/*\nnews.ycombinator.com\nstripe.com/docs/*"}
               />
-              <button className="px-4 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-400 font-bold rounded-lg border border-red-500/30 transition-colors">
-                KÖR OVERRIDE
-              </button>
+            </div>
+          </div>
+
+          {/* The Watchdog Planner */}
+          <div className="p-8 glass rounded-3xl border border-white/5 flex flex-col gap-6">
+            <h2 className="text-xl font-bold flex items-center gap-3">
+              <Zap className="text-purple-500" />
+              The Watchdog Planner
+            </h2>
+
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Schemalagda Uppdrag</h3>
+              {[
+                { schedule: 'Varje timme', desc: 'Läs RSS efter nya GRC-lagar' },
+                { schedule: 'Kl 04:00', desc: 'Rensa temp-filer & städa RAM' },
+                { schedule: 'Kl 08:00', desc: 'Generera Morning Briefing till Telegram' }
+              ].map((task, i) => (
+                <div key={i} className="flex gap-3 items-start p-3 bg-white/5 rounded-lg border border-white/5 border-l-2 border-l-purple-500">
+                  <div className="text-xs font-mono text-purple-400 mt-0.5 min-w-[70px]">{task.schedule}</div>
+                  <div className="text-sm text-gray-300 leading-tight">{task.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-auto pt-4 border-t border-white/10">
+              <h3 className="text-xs font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <AlertCircle size={14} /> Goal Override
+              </h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Injicera nytt högprioriterat mål..."
+                  className="flex-1 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-sm focus:outline-none focus:border-red-500/50"
+                />
+                <button className="px-4 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-400 font-bold rounded-lg border border-red-500/30 transition-colors">
+                  KÖR OVERRIDE
+                </button>
+              </div>
             </div>
           </div>
         </div>

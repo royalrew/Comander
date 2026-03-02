@@ -6,7 +6,6 @@ from cfo import cfo, TokenLimitExceeded
 
 # Import our autonomous tools
 from io_jail import list_files, read_file
-from surgeon import surgeon
 from observer import observer
 from calendar_agent import calendar_agent
 
@@ -41,40 +40,6 @@ TOOLS_SCHEMA = [
                     "filepath": {"type": "string", "description": "Relative or absolute path to the file"}
                 },
                 "required": ["filepath"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "refactor_file",
-            "description": "Rewrites a file to achieve a specific objective.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "filepath": {"type": "string", "description": "Path to the file to rewrite"},
-                    "objective": {"type": "string", "description": "Highly detailed instruction matching the user's intent"}
-                },
-                "required": ["filepath", "objective"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "validate_code",
-            "description": "Runs a terminal command (like npm run build, or pytest) to validate the code. Self-corrects on failure.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "filepath": {"type": "string", "description": "The primary file being validated"},
-                    "command_list": {
-                        "type": "array", 
-                        "items": {"type": "string"},
-                        "description": "The command as a list of strings, e.g. ['npm', 'run', 'build']"
-                    }
-                },
-                "required": ["filepath", "command_list"]
             }
         }
     },
@@ -146,12 +111,6 @@ class ModelOrchestrator:
                 return str(list_files(args["mission_name"]))
             elif name == "read_file":
                 return read_file(args["filepath"])
-            elif name == "refactor_file":
-                success = surgeon.refactor_file(args["filepath"], args["objective"])
-                return "File rewritten successfully." if success else "Failed to rewrite file."
-            elif name == "validate_code":
-                success = surgeon.validate_code(args["filepath"], args["command_list"])
-                return "Validation passed! Zero errors." if success else "Validation failed after maximum self-correction retries."
             elif name == "memorize_fact":
                 fact = args["fact"]
                 category = args.get("category", "General")
@@ -265,10 +224,9 @@ class ModelOrchestrator:
                 "3. No-Todo Policy: Never leave `# TODO` or `pass` in code. Break down complex functions instead.\n"
                 "4. Error Handling: Never use generic `try/except: pass`. Log specific exceptions.\n"
                 "5. Generative UI: Suggest and provide UI components (React Server Components) over text summaries when visualizing data.\n\n"
-                "CRITICAL DIRECTIVE - AUTONOMOUS ACTION: Du är en operativ AI, inte en guide. "
-                "Om användaren ber dig skapa, ändra, felsöka eller radera kod MÅSTE du omedelbart använda dina verktyg (t.ex. refactor_file). "
-                "Du får under INGA omständigheter be användaren att öppna en textredigerare, och du får ALDRIG skriva ut kod i chatten med uppmaningen 'kopiera och klistra in'. "
-                "Du gör jobbet. Användaren inspekterar resultatet."
+                "CRITICAL DIRECTIVE - CONSULTANT MODE: Du är en rådgivande Tech Lead och Coach. "
+                "Om användaren ber dig att koda något, förklara hur arkitekturen bör se ut och ge strategisk riktning, men exekvera inte koden själv. Du har ENDAST LÄSRÄTTIGHETER till koden. "
+                "Ställ de tuffa frågorna som leder till bra designbeslut. Håll CEO:n ansvarig för målen."
             )
 
         # Inject Long-Term Persistent Memory
