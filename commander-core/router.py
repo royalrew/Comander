@@ -149,8 +149,8 @@ class ModelOrchestrator:
                 fact = args["fact"]
                 category = args.get("category", "General")
                 from memory_module import memory_bank
-                success = memory_bank.store_memory(category, fact)
-                return f"Fact successfully memorized in OpenSearch: {fact}" if success else "Failed to store memory."
+                success, err_msg = memory_bank.store_memory(category, fact)
+                return f"Fact successfully memorized in OpenSearch: {fact}" if success else f"Failed to store memory. Reason: {err_msg}"
             elif name == "add_calendar_event":
                 success = calendar_agent.add_event(args["start_date"], args["start_time"], args["description"], args.get("end_time"))
                 return f"Händelse ({args['description']}) inlagd på datumet {args['start_date']} kl {args['start_time']}." if success else "Kunde inte lägga till händelsen."

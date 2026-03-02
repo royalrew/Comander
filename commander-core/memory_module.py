@@ -79,12 +79,14 @@ class MemoryBank:
             logger.error(f"Embedding failed: {e}")
             return []
 
-    def store_memory(self, category: str, text: str) -> bool:
-        """Embeds and saves a new fact to OpenSearch."""
-        if not self.client: return False
+    def store_memory(self, category: str, text: str) -> tuple[bool, str]:
+        """Embeds and saves a new fact to OpenSearch. Returns (success, error_msg)."""
+        if not self.client: 
+            return False, "Memory Bank is disabled (OPENSEARCH_URL missing)."
         
         vector = self._get_embedding(text)
-        if not vector: return False
+        if not vector: 
+            return False, "Embedding failed via LiteLLM."
         
         from datetime import datetime
         doc = {
@@ -96,10 +98,10 @@ class MemoryBank:
         
         try:
             self.client.index(index=INDEX_NAME, body=doc, refresh=True)
-            return True
+            return True, ""
         except Exception as e:
             logger.error(f"Failed to store memory to OpenSearch: {e}")
-            return False
+            return False, str(e)
 
     def search_memory(self, query: str, limit: int = 5) -> list[dict]:
         """Performs a vector similarity search for relevant memories."""
