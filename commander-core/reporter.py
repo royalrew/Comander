@@ -127,6 +127,7 @@ async def chat_handler(message: types.Message):
         return
 
     user_id = message.from_user.id
+    user_name = message.from_user.first_name or "Commander"
     user_text = message.text
 
     if not user_text:
@@ -146,7 +147,7 @@ async def chat_handler(message: types.Message):
         import asyncio
 
         def ask_ai():
-            return router.ask_cortex(user_prompt=user_text, history=history)
+            return router.ask_cortex(user_prompt=user_text, history=history, user_name=user_name)
 
         # Run synchronously in a thread to not block other Telegram users
         reply = await asyncio.to_thread(ask_ai)

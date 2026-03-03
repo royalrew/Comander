@@ -13,3 +13,25 @@ def memorize_fact(fact: str, category: str = "General") -> str:
             return f"Error: Failed to store memory. Reason: {err_msg}"
     except Exception as e:
         return f"System Error: {str(e)}"
+
+@tool
+def recall_memories(query: str, limit: int = 5) -> str:
+    """Söker i Vector Databasen (OpenSearch) efter tidigare sparad kontext (Minnen).
+    Använd detta för att komma ihåg fakta relaterat till användaren, tex 'vad heter jag?', 'vilket gym tränar jag på?'.
+    Anger strängen du vill söka efter."""
+    try:
+        from memory_module import memory_bank
+        results = memory_bank.search_memory(query, limit=limit)
+        if not results:
+            return "Inga relevanta minnen hittades."
+        
+        # Format the output clearly
+        formatted = "Funna minnen:\n"
+        for i, hit in enumerate(results):
+            text = hit.get("text", "")
+            cat = hit.get("category", "")
+            formatted += f"- ({cat}): {text}\n"
+            
+        return formatted
+    except Exception as e:
+        return f"System Error: {str(e)}"

@@ -58,7 +58,7 @@ class ModelOrchestrator:
     The hybrid bridge holding legacy internal Python calls
     while forwarding all core logic to LangGraph.
     """
-    async def ask_cortex_async(self, user_prompt: str, history: list = None, system_prompt: str = None) -> str:
+    async def ask_cortex_async(self, user_prompt: str, history: list = None, system_prompt: str = None, user_name: str = "Commander") -> str:
         """
         The new async gateway for internal Telegram/Cron jobs to reach the Swarm.
         """
@@ -74,11 +74,17 @@ class ModelOrchestrator:
                         
             langchain_messages.append(HumanMessage(content=user_prompt))
 
+            from datetime import datetime
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+
             initial_state = {
                 "messages": langchain_messages,
                 "active_dashboard_tab": "overview",
                 "dashboard_data": {},
-                "next_step": None
+                "next_step": None,
+                "session_user_id": user_name,
+                "session_time": current_time,
+                "error": ""
             }
 
             final_state = await swarm_engine.ainvoke(initial_state)
@@ -88,16 +94,16 @@ class ModelOrchestrator:
             print(f"🔥 SWARM ERROR (Internal): {e}")
             return f"System Error i Svärmen: {e}"
 
-    def ask_cortex(self, user_prompt: str, history: list = None, system_prompt: str = None) -> str:
+    def ask_cortex(self, user_prompt: str, history: list = None, system_prompt: str = None, user_name: str = "Commander") -> str:
         """Fallback synchronous wrapper for legacy cron jobs if needed."""
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            return asyncio.run(self.ask_cortex_async(user_prompt, history, system_prompt))
+            return asyncio.run(self.ask_cortex_async(user_prompt, history, system_prompt, user_name))
             
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor() as pool:
-            return pool.submit(asyncio.run, self.ask_cortex_async(user_prompt, history, system_prompt)).result()
+            return pool.submit(asyncio.run, self.ask_cortex_async(user_prompt, history, system_prompt, user_name)).result()
 
     def ask_watchdog(self, context_to_evaluate: str) -> bool:
         """

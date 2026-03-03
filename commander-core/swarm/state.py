@@ -16,5 +16,9 @@ class AgentState(TypedDict):
     # 3. Routing Flag
     next_step: str                  # Determines which node should execute next
     
+    # 4. Global Request Context
+    session_user_id: str
+    session_time: str
+    
     # Optional: Error tracking
     error: str

@@ -25,9 +25,12 @@ agent_runnable = create_react_agent(llm, tools=[memorize_fact])
 async def health_coach_node(state: AgentState) -> AgentState:
     """The Health Coach specialized agent."""
     messages = state["messages"]
+    user_name = state.get("session_user_id", "CEO")
+    curr_time = state.get("session_time", "Unknown")
     
     # 1. Dynamically inject the System Persona to bypass any LangGraph kwargs bugs
-    system_message = SystemMessage(content=HEALTH_COACH_PROMPT)
+    dynamic_prompt = HEALTH_COACH_PROMPT + f"\n\n[CONTEXT]\nUser: {user_name}\nTime: {curr_time}\n"
+    system_message = SystemMessage(content=dynamic_prompt)
     input_payload = [system_message] + messages
     
     # Run the compiled ReAct agent
