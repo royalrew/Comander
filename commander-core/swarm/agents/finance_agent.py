@@ -19,6 +19,7 @@ async def cfo_node(state: AgentState) -> AgentState:
     """The CFO specialized agent."""
     user_name = state.get("session_user_id", "CEO")
     curr_time = state.get("session_time", "Unknown")
+    messages = state.get("messages", [])
     
     dynamic_prompt = CFO_PROMPT + f"\n\n[CONTEXT]\nUser: {user_name}\nTime: {curr_time}\n"
     system_message = SystemMessage(content=dynamic_prompt)

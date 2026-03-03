@@ -19,6 +19,7 @@ async def tech_lead_node(state: AgentState) -> AgentState:
     """The Tech Lead specialized agent."""
     user_name = state.get("session_user_id", "CEO")
     curr_time = state.get("session_time", "Unknown")
+    messages = state.get("messages", [])
     
     dynamic_prompt = TECH_LEAD_PROMPT + f"\n\n[CONTEXT]\nUser: {user_name}\nTime: {curr_time}\n"
     system_message = SystemMessage(content=dynamic_prompt)
