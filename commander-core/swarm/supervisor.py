@@ -26,8 +26,8 @@ async def supervisor_node(state: AgentState) -> AgentState:
     
     decision = response.content.strip().replace('"', '').replace("'", "")
     
-    valid_agents = ["TechLeadAgent", "HealthCoachAgent", "CFOAgent", "FINISH"]
+    valid_agents = ["TechLeadAgent", "HealthCoachAgent", "CFOAgent", "CommanderAgent", "FINISH"]
     if decision not in valid_agents:
-        decision = "FINISH" # Fallback
+        decision = "CommanderAgent" # Fallback to general chat
         
     return {"next_step": decision}

@@ -105,6 +105,35 @@ class ModelOrchestrator:
         with concurrent.futures.ThreadPoolExecutor() as pool:
             return pool.submit(asyncio.run, self.ask_cortex_async(user_prompt, history, system_prompt, user_name)).result()
 
+    async def ask_cortex_direct_async(self, user_prompt: str, system_prompt: str = None) -> str:
+        """
+        Directly queries the LLM without routing through the LangGraph agents.
+        Used for system jobs like Mid-Week Review.
+        """
+        try:
+            from litellm import completion
+            model = os.getenv("CORTEX_MODEL", "gpt-4o")
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": user_prompt})
+            
+            response = completion(model=model, messages=messages, temperature=0.5)
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"🔥 DIRECT LLM ERROR: {e}")
+            return f"System Error: {e}"
+
+    def ask_cortex_direct(self, user_prompt: str, system_prompt: str = None) -> str:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.ask_cortex_direct_async(user_prompt, system_prompt))
+            
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            return pool.submit(asyncio.run, self.ask_cortex_direct_async(user_prompt, system_prompt)).result()
+
     def ask_watchdog(self, context_to_evaluate: str) -> bool:
         """
         Uses the local Watchdog model (e.g. Ollama) directly.

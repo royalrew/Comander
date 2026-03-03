@@ -54,27 +54,27 @@ class Reporter:
 
     async def send_morning_briefing(self, briefing_text: str):
         """Sends the daily Morning Briefing."""
-        try:
-            for user in AUTHORIZED_USERS:
+        for user in AUTHORIZED_USERS:
+            try:
                 await self.bot.send_message(
                     chat_id=user,
                     text=f"🌅 **Morgonrapport - CEO Mode**\n\n{briefing_text}",
                     parse_mode="Markdown"
                 )
-        except Exception as e:
-            logging.error(f"Failed to send morning briefing: {e}")
+            except Exception as e:
+                logging.error(f"Failed to send morning briefing to user {user}: {e}")
 
     async def send_alert(self, alert_text: str):
         """Sends an immediate proactive alert."""
-        try:
-            for user in AUTHORIZED_USERS:
+        for user in AUTHORIZED_USERS:
+            try:
                 await self.bot.send_message(
                     chat_id=user,
                     text=f"⚠️ **PROAKTIV VARNING**\n\n{alert_text}",
                     parse_mode="Markdown"
                 )
-        except Exception as e:
-            logging.error(f"Failed to send alert: {e}")
+            except Exception as e:
+                logging.error(f"Failed to send alert to user {user}: {e}")
 
 reporter_instance = Reporter(bot)
 

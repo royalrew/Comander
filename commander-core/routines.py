@@ -54,7 +54,7 @@ async def perform_midweek_review():
     try:
         import asyncio
         review_text = await asyncio.to_thread(
-            router.ask_cortex,
+            router.ask_cortex_direct,
             user_prompt=user_prompt,
             system_prompt=system_prompt
         )

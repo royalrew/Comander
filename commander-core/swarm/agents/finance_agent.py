@@ -2,22 +2,32 @@ import os
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from swarm.state import AgentState
+from langgraph.prebuilt import create_react_agent
+from swarm.tools import manage_calendar_event, get_calendar_view
 
 llm = ChatOpenAI(model=os.getenv("CORTEX_MODEL", "gpt-4o"), temperature=0.1)
 
 CFO_PROMPT = """Du är The CFO Agent (Chief Financial Officer). Din roll är att övervaka kostnader, Stripe, intäkter och API-utgifter.
 Var sparsam, ifrågasättande av utgifter och fokusera på ROI.
+Du har tillgång till CEO:ns kalender via 'get_calendar_view' och 'manage_calendar_event'. Du kan boka in uppföljningsmöten för budget eller ekonomiska reviews (kategori="Finance", agent_id="CFO").
 Din output visas under 'CFO AGENT' på the Commander Dashboard."""
+
+agent_runnable = create_react_agent(llm, tools=[manage_calendar_event, get_calendar_view])
 
 async def cfo_node(state: AgentState) -> AgentState:
     """The CFO specialized agent."""
-    messages = state["messages"]
+    user_name = state.get("session_user_id", "CEO")
+    curr_time = state.get("session_time", "Unknown")
     
-    system_message = SystemMessage(content=CFO_PROMPT)
-    response = await llm.ainvoke([system_message] + messages)
+    dynamic_prompt = CFO_PROMPT + f"\n\n[CONTEXT]\nUser: {user_name}\nTime: {curr_time}\n"
+    system_message = SystemMessage(content=dynamic_prompt)
+    input_payload = [system_message] + messages
+    
+    result = await agent_runnable.ainvoke({"messages": input_payload})
+    new_messages = result["messages"][len(input_payload):]
     
     return {
-        "messages": [response],
+        "messages": new_messages,
         "active_dashboard_tab": "finance",
         "dashboard_data": {
             "burn_rate": "Calculating...",

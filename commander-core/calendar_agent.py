@@ -7,6 +7,20 @@ from zoneinfo import ZoneInfo
 SWEDISH_TZ = ZoneInfo("Europe/Stockholm")
 CALENDAR_PATH = os.path.join(os.path.dirname(__file__), 'memory', 'calendar_db.json')
 
+# Auto-migrate: Add missing columns if they don't exist
+try:
+    from database import engine
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE events ADD COLUMN category VARCHAR DEFAULT 'General'"))
+        conn.execute(text("ALTER TABLE events ADD COLUMN priority VARCHAR DEFAULT 'Medium'"))
+        conn.execute(text("ALTER TABLE events ADD COLUMN agent_id VARCHAR"))
+        conn.execute(text("ALTER TABLE events ADD COLUMN location VARCHAR"))
+        conn.execute(text("ALTER TABLE events ADD COLUMN color VARCHAR"))
+except Exception as e:
+    # Columns probably already exist
+    pass
+
 class CalendarAgent:
     """Manages the Executive Calendar via the centralized PostgreSQL database."""
     
@@ -22,6 +36,11 @@ class CalendarAgent:
                 "start_time": e.start_time,
                 "end_time": e.end_time,
                 "description": e.description,
+                "category": getattr(e, 'category', 'General'),
+                "priority": getattr(e, 'priority', 'Medium'),
+                "agent_id": getattr(e, 'agent_id', None),
+                "location": getattr(e, 'location', None),
+                "color": getattr(e, 'color', None),
                 "created_at": e.created_at.isoformat() if getattr(e, 'created_at', None) else None,
                 "is_reminder": not getattr(e, 'reminder_sent', False)
             } for e in events]
@@ -36,7 +55,7 @@ class CalendarAgent:
         now = datetime.now(SWEDISH_TZ)
         return now.strftime("%Y-%m-%d %H:%M:%S (%A)")
 
-    def add_event(self, start_date: str, start_time: str, description: str, end_time: str = None, is_reminder: bool = True) -> bool:
+    def add_event(self, start_date: str, start_time: str, description: str, end_time: str = None, is_reminder: bool = True, category: str = "General", priority: str = "Medium", agent_id: str = None, location: str = None, color: str = None) -> bool:
         import uuid
         from database import SessionLocal
         from models import EventDB
@@ -49,6 +68,11 @@ class CalendarAgent:
                 start_time=start_time,
                 end_time=end_time,
                 description=description,
+                category=category,
+                priority=priority,
+                agent_id=agent_id,
+                location=location,
+                color=color,
                 reminder_sent=not is_reminder
             )
             db.add(new_event)
@@ -61,7 +85,7 @@ class CalendarAgent:
         finally:
             db.close()
 
-    def update_event(self, event_id: str, start_date: str, start_time: str, description: str, end_time: str = None, is_reminder: bool = True) -> bool:
+    def update_event(self, event_id: str, start_date: str, start_time: str, description: str, end_time: str = None, is_reminder: bool = True, category: str = "General", priority: str = "Medium", agent_id: str = None, location: str = None, color: str = None) -> bool:
         from database import SessionLocal
         from models import EventDB
         db = SessionLocal()
@@ -72,6 +96,11 @@ class CalendarAgent:
                 event.start_time = start_time
                 event.description = description
                 event.end_time = end_time
+                event.category = category
+                event.priority = priority
+                event.agent_id = agent_id
+                event.location = location
+                event.color = color
                 event.reminder_sent = not is_reminder
                 db.commit()
                 return True

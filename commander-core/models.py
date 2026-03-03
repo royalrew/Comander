@@ -10,6 +10,11 @@ class EventDB(Base):
     start_time = Column(String, nullable=False)
     end_time = Column(String, nullable=True)
     description = Column(String, nullable=False)
+    category = Column(String, nullable=True, default="General")
+    priority = Column(String, nullable=True, default="Medium")
+    agent_id = Column(String, nullable=True) # e.g., "HealthCoachAgent"
+    location = Column(String, nullable=True)
+    color = Column(String, nullable=True)
     reminder_sent = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 

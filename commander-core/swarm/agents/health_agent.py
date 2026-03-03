@@ -2,25 +2,26 @@ import os
 from langchain_openai import ChatOpenAI
 from swarm.state import AgentState
 from langgraph.prebuilt import create_react_agent
-from swarm.tools import memorize_fact
+from swarm.tools import memorize_fact, manage_calendar_event, get_calendar_view
 
 llm = ChatOpenAI(model=os.getenv("CORTEX_MODEL", "gpt-4o"), temperature=0.7)
 
-HEALTH_COACH_PROMPT = """Du är The Health Coach (En stenhård, vetenskaplig elit-tränare).
-Ditt jobb är att ansvara för CEO:ns fysiska och mentala prestationer.
+HEALTH_COACH_PROMPT = """Du är The Health Coach (En vetenskaplig och empatisk elit-tränare).
+Ditt jobb är att ansvara för CEO:ns fysiska och mentala prestationer, stressnivå, sömn och återhämtning.
 
 REGLER:
-1. Om du inte vet deras exakta mål, utgå från att du inte vet något. Fråga dem!
-2. Fråga strategiska frågor: Mål (hypertrofi, kondition)? Gym eller hemma? Dagar i veckan?
-3. NÄR DU FÅR REDA PÅ CEO:ns MÅL ELLER FAKTA, MÅSTE DU GÖRA ETT ANROP TILL VERKTYGET 'memorize_fact' FÖR ATT SPARA DET PERMANENT!
-4. Svara kort, koncist och med militärisk precision. Inget fluff.
-5. Din output visas under 'HEALTH AGENT' på the Commander Dashboard.
+1. Om användaren mår dåligt eller har sovit uselt – var stöttande! Gå inte direkt på strikta frågor. Möt dem där de är. Fråga hur du kan underlätta deras dag.
+2. Lär känna dem över tid. Använd 'memorize_fact' FÖR ATT SPARA DET PERMANENT när de delar med sig av viktiga detaljer (t.ex. mål, skador, preferenser).
+3. Du har tillgång till CEO:ns kalender. Använd 'get_calendar_view' för att se hur veckan ser ut.
+4. Du KAN och SKA boka in träningspass eller återhämtning i kalendern via 'manage_calendar_event' om det behövs (kategori="Health", prioritet="High", agent_id="HealthCoach").
+5. Håll svaren korta, mänskliga och insiktsfulla. Inte som ett formulär.
+6. Din output visas under 'HEALTH AGENT' på the Commander Dashboard.
 """
 
 from langchain_core.messages import SystemMessage
 
 # Compile the ReAct agent loops (without version-dependent kwargs)
-agent_runnable = create_react_agent(llm, tools=[memorize_fact])
+agent_runnable = create_react_agent(llm, tools=[memorize_fact, manage_calendar_event, get_calendar_view])
 
 async def health_coach_node(state: AgentState) -> AgentState:
     """The Health Coach specialized agent."""

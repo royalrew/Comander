@@ -139,6 +139,11 @@ class CalendarEventCreate(BaseModel):
     description: str
     end_time: str | None = None
     is_reminder: bool = True
+    category: str = "General"
+    priority: str = "Medium"
+    agent_id: str | None = None
+    location: str | None = None
+    color: str | None = None
 
 @app.get("/api/v1/calendar")
 async def get_all_calendar_events():
@@ -156,11 +161,16 @@ async def create_calendar_event(event: CalendarEventCreate):
     from calendar_agent import calendar_agent
     try:
         success = calendar_agent.add_event(
-            event.start_date,
-            event.start_time,
-            event.description,
-            event.end_time,
-            event.is_reminder
+            start_date=event.start_date,
+            start_time=event.start_time,
+            description=event.description,
+            end_time=event.end_time,
+            is_reminder=event.is_reminder,
+            category=event.category,
+            priority=event.priority,
+            agent_id=event.agent_id,
+            location=event.location,
+            color=event.color
         )
         if success:
             return {"status": "success", "message": "Event created"}
@@ -175,12 +185,17 @@ async def update_calendar_event(event_id: str, event: CalendarEventCreate):
     from calendar_agent import calendar_agent
     try:
         success = calendar_agent.update_event(
-            event_id,
-            event.start_date,
-            event.start_time,
-            event.description,
-            event.end_time,
-            event.is_reminder
+            event_id=event_id,
+            start_date=event.start_date,
+            start_time=event.start_time,
+            description=event.description,
+            end_time=event.end_time,
+            is_reminder=event.is_reminder,
+            category=event.category,
+            priority=event.priority,
+            agent_id=event.agent_id,
+            location=event.location,
+            color=event.color
         )
         if success:
             return {"status": "success", "message": "Event updated"}
