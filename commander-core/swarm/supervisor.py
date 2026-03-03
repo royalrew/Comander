@@ -13,6 +13,10 @@ Available Sub-Agents:
 - CFOAgent: For finance, subscriptions, Stripe data.
 - CommanderAgent: For general conversation, chitchat, or unclassified queries (like "ok", "va?", "tack").
 
+IMPORTANT ROUTING RULE:
+You MUST base your routing decision STRICTLY on the USER'S MOST RECENT MESSAGE (the very last message in the history). 
+If the user was talking about health before, but now asks about coding, you MUST switch to the TechLeadAgent. Ignore previous context if the intent has changed.
+
 Respond ONLY with the EXACT name of the Sub-Agent. Do not output any other text or reasoning.
 """
 
