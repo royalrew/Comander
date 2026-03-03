@@ -216,3 +216,51 @@ async def delete_calendar_event(event_id: str):
             return {"status": "error", "message": "Event not found"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+# --- MISSION CONTROL (PLANS) ENDPOINTS ---
+
+@app.get("/api/v1/plans")
+async def get_all_plans():
+    """Returns all active, paused, and scheduled jobs from APScheduler."""
+    from scheduler_module import commander_scheduler
+    jobs = []
+    
+    for job in commander_scheduler.get_jobs():
+        jobs.append({
+            "id": job.id,
+            "name": job.name,
+            "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+            "is_paused": job.next_run_time is None
+        })
+        
+    return {"status": "success", "jobs": jobs}
+
+@app.post("/api/v1/plans/{job_id}/pause")
+async def pause_plan(job_id: str):
+    """Pauses a scheduled job."""
+    from scheduler_module import commander_scheduler
+    job = commander_scheduler.get_job(job_id)
+    if job:
+        job.pause()
+        return {"status": "success", "message": f"Job {job_id} paused"}
+    return {"status": "error", "message": "Job not found"}
+
+@app.post("/api/v1/plans/{job_id}/resume")
+async def resume_plan(job_id: str):
+    """Resumes a paused job."""
+    from scheduler_module import commander_scheduler
+    job = commander_scheduler.get_job(job_id)
+    if job:
+        job.resume()
+        return {"status": "success", "message": f"Job {job_id} resumed"}
+    return {"status": "error", "message": "Job not found"}
+
+@app.post("/api/v1/plans/{job_id}/trigger")
+async def trigger_plan(job_id: str):
+    """Manually triggers a job to run immediately."""
+    from scheduler_module import commander_scheduler
+    job = commander_scheduler.get_job(job_id)
+    if job:
+        job.modify(next_run_time=__import__('datetime').datetime.now(__import__('zoneinfo').ZoneInfo("Europe/Stockholm")))
+        return {"status": "success", "message": f"Job {job_id} triggered to run immediately"}
+    return {"status": "error", "message": "Job not found"}

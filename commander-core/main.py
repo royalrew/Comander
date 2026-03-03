@@ -1,7 +1,6 @@
 import os
 import asyncio
 import logging
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 
 from reporter import start_telegram_polling, reporter_instance
@@ -80,23 +79,22 @@ async def main():
     logger.info("Booting Commander Core (CEO Mode)...")
     
     # 1. Start the Proactive Scheduler
-    from zoneinfo import ZoneInfo
-    scheduler = AsyncIOScheduler(timezone=ZoneInfo("Europe/Stockholm"))
+    from scheduler_module import commander_scheduler
     
     # Run the Watchdog Heartbeat every hour
-    scheduler.add_job(watchdog_heartbeat, 'interval', minutes=60)
+    commander_scheduler.add_job(watchdog_heartbeat, 'interval', minutes=60, id='watchdog_heartbeat', name='Watchdog Heartbeat')
     
     # Run the Mid-Week Review on Wednesdays at 14:00
     import routines
-    scheduler.add_job(routines.perform_midweek_review, 'cron', day_of_week='wed', hour=14, minute=0)
+    commander_scheduler.add_job(routines.perform_midweek_review, 'cron', day_of_week='wed', hour=14, minute=0, id='midweek_review', name='Mid-Week Review')
     
     # Run the Morning Briefing daily at 07:00
-    scheduler.add_job(morning_briefing_job, 'cron', hour=7, minute=0)
+    commander_scheduler.add_job(morning_briefing_job, 'cron', hour=7, minute=0, id='morning_briefing', name='Morning Briefing')
 
     # Check for reminders every minute
-    scheduler.add_job(check_reminders_job, 'cron', minute='*')
+    commander_scheduler.add_job(check_reminders_job, 'cron', minute='*', id='check_reminders', name='Calendar Reminders')
     
-    scheduler.start()
+    commander_scheduler.start()
     logger.info("APScheduler Proactive Loops Started.")
 
     # 2. Start the API Server and Telegram polling concurrently
