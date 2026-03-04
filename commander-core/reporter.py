@@ -117,6 +117,117 @@ async def cmd_review(message: types.Message):
         await routines.perform_midweek_review()
 
 # ==========================================
+# DETERMINISTIC SCHEDULE IMPORT (bypasses LLM)
+# ==========================================
+
+@dp.message(Command("schema"))
+async def cmd_schema(message: types.Message):
+    """Parses a pasted work schedule deterministically and bulk-inserts into the calendar.
+    Usage: /schema followed by lines like '2/3 Mån: 07:00-16:00 (optional note)'
+    """
+    if not await reporter_instance.verify_user(message):
+        return
+    
+    import re
+    import uuid
+    from database import SessionLocal
+    from models import EventDB, SystemLogDB
+    
+    raw_text = message.text.replace("/schema", "", 1).strip()
+    if not raw_text:
+        await message.reply("ℹ️ Användning: /schema följt av ditt arbetsschema.\nExempel:\n/schema\n2/3 Mån: 07:00-16:00\n5/3 Tor: 08:00-15:30 (Utbildning)")
+        return
+    
+    # Detect the year from context (default to current year)
+    year_match = re.search(r'(20\d{2})', raw_text)
+    year = int(year_match.group(1)) if year_match else 2026
+    
+    # Pattern: day/month + optional weekday + colon + time range(s) + optional note
+    line_pattern = re.compile(
+        r'(\d{1,2})/(\d{1,2})\s*\w*\s*:?\s*'
+        r'(\d{1,2}[:\.:]\d{2})\s*[\-\–]\s*(\d{1,2}[:\.:]\d{2})'
+        r'(?:\s*(?:&|och)\s*(\d{1,2}[:\.:]\d{2})\s*[\-\–]\s*(\d{1,2}[:\.:]\d{2}))?'
+        r'(?:\s*\(?(.+?)\)?)?\s*$',
+        re.MULTILINE
+    )
+    
+    matches = line_pattern.findall(raw_text)
+    
+    if not matches:
+        await message.reply("❌ Kunde inte tolka några rader. Se till att formatet är:\n`5/3 Tor: 08:00-15:30`\neller\n`15/3 Sön: 07:00-13:00 & 15:30-21:00`", parse_mode="Markdown")
+        return
+    
+    db = SessionLocal()
+    added = 0
+    details = []
+    
+    try:
+        for m in matches:
+            day, month = int(m[0]), int(m[1])
+            start1 = m[2].replace('.', ':')
+            end1 = m[3].replace('.', ':')
+            start2 = m[4].replace('.', ':') if m[4] else None
+            end2 = m[5].replace('.', ':') if m[5] else None
+            note = m[6].strip() if m[6] else ""
+            
+            date_str = f"{year}-{month:02d}-{day:02d}"
+            desc = f"Jobb{' (' + note + ')' if note else ''}"
+            
+            # First shift
+            event1 = EventDB(
+                id=str(uuid.uuid4()),
+                start_date=date_str,
+                start_time=start1,
+                end_time=end1,
+                description=desc,
+                category="Work",
+                priority="Medium",
+                agent_id="SchemaImport",
+                reminder_sent=True
+            )
+            db.add(event1)
+            added += 1
+            details.append(f"{date_str} {start1}-{end1}")
+            
+            # Second shift (split day)
+            if start2 and end2:
+                event2 = EventDB(
+                    id=str(uuid.uuid4()),
+                    start_date=date_str,
+                    start_time=start2,
+                    end_time=end2,
+                    description=f"Jobb (Pass 2){' - ' + note if note else ''}",
+                    category="Work",
+                    priority="Medium",
+                    agent_id="SchemaImport",
+                    reminder_sent=True
+                )
+                db.add(event2)
+                added += 1
+                details.append(f"{date_str} {start2}-{end2}")
+        
+        # Audit log
+        audit = SystemLogDB(
+            action_type="schema_import",
+            details=f"Imported {added} work shifts via /schema command."
+        )
+        db.add(audit)
+        db.commit()
+        
+        await message.reply(
+            f"✅ **Schema importerat!**\n\n"
+            f"**{added} arbetspass** har lagts till i kalendern.\n\n"
+            + "\n".join([f"• {d}" for d in details[:10]])
+            + (f"\n... och {len(details) - 10} till." if len(details) > 10 else ""),
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        db.rollback()
+        await message.reply(f"❌ Databasfel: {str(e)}")
+    finally:
+        db.close()
+
+# ==========================================
 # CHAT HANDLER (Modell-Lera / Conversational Mode)
 # ==========================================
 user_sessions = {}
