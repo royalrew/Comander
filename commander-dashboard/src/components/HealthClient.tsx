@@ -4,6 +4,47 @@ import React, { useState, useRef, useEffect } from 'react';
 import { HeartPulse, Activity, Flame, UtilityPole, Send, Calendar, Battery, Zap } from 'lucide-react';
 import AgentCard from '@/components/AgentCard';
 
+const MessageContent = ({ text }: { text: string }) => {
+    const jsonRegex = /```json\s*(\{[\s\S]*?\})\s*```/;
+    const match = text.match(jsonRegex);
+
+    if (match) {
+        try {
+            const data = JSON.parse(match[1]);
+            if (data._ui_type === 'workout_card') {
+                const textBefore = text.slice(0, match.index).trim();
+                const textAfter = text.slice(match.index! + match[0].length).trim();
+                return (
+                    <div className="space-y-4">
+                        {textBefore && <div className="whitespace-pre-wrap">{textBefore}</div>}
+                        <div className="bg-black/60 border border-emerald-500/40 rounded-xl p-4 my-2 shadow-[0_0_15px_theme(colors.emerald.500/10)]">
+                            <h3 className="text-emerald-400 font-bold mb-3 flex items-center gap-2">
+                                <Flame size={18} />
+                                {data.title}
+                            </h3>
+                            <div className="space-y-2">
+                                {data.exercises?.map((ex: any, i: number) => (
+                                    <div key={i} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5 hover:border-emerald-500/30 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <input type="checkbox" className="w-4 h-4 rounded appearance-none border border-emerald-500/50 checked:bg-emerald-500 checked:border-emerald-500 cursor-pointer transition-all" />
+                                            <span className="text-white font-medium text-sm">{ex.name}</span>
+                                        </div>
+                                        <span className="text-emerald-500 font-mono text-sm bg-emerald-500/10 px-2 py-0.5 rounded">{ex.sets}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        {textAfter && <div className="whitespace-pre-wrap">{textAfter}</div>}
+                    </div>
+                );
+            }
+        } catch (e) {
+            // fallback to original text if JSON fails to parse
+        }
+    }
+    return <div className="whitespace-pre-wrap">{text}</div>;
+};
+
 export default function HealthClient() {
     const [query, setQuery] = useState("");
     const [messages, setMessages] = useState<any[]>([
@@ -111,10 +152,10 @@ export default function HealthClient() {
                         {messages.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${m.role === 'user'
-                                        ? 'bg-blue-600 outline-none text-white'
-                                        : 'bg-black/40 border border-emerald-500/20 text-zinc-300 font-mono'
+                                    ? 'bg-blue-600 outline-none text-white'
+                                    : 'bg-black/40 border border-emerald-500/20 text-zinc-300 font-mono'
                                     }`}>
-                                    <div className="whitespace-pre-wrap">{m.text}</div>
+                                    <MessageContent text={m.text} />
                                 </div>
                             </div>
                         ))}

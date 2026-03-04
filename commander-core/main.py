@@ -43,21 +43,38 @@ async def watchdog_heartbeat():
         logger.info("Watchdog assessment: NO ACTION REQUIRED.")
 
 async def morning_briefing_job():
-    """Generates and sends the daily summary via the Reporter."""
+    """Generates and sends the daily summary via the Health Coach persona."""
     from calendar_agent import calendar_agent
     from cfo import cfo
-    from audit_module import audit_module
+    from router import router
+    import yaml
+    
+    # We dynamically import the prompt to ensure it's up to date
+    from swarm.agents.health_agent import HEALTH_COACH_PROMPT
     
     events = calendar_agent.get_todays_events()
-    
+    schema_text = "Dagens Schema:"
     if events:
-        schema_text = "Dagens Schema (Bokat):\n" + "\n".join([f"• {e['start_time']}: {e['description']}" for e in events])
+        schema_text += "\n" + "\n".join([f"- {e['start_time']} till {e.get('end_time', 'okänt')}: {e['description']}" for e in events])
     else:
-        schema_text = "Dagens Schema: (Helt rent. Du har kontrollen.)"
+        schema_text += " Helt rent. Inga möten inbokade."
         
-    audit_text = audit_module.generate_audit_report()
-        
-    briefing = f"🌅 **God morgon Commander!**\n\n• The Cortex Heartbeat: Stabil\n• Dagens API Spend: ${cfo.current_daily_spend:.2f}\n\n{schema_text}\n\n{audit_text}"
+    profile_data = {}
+    try:
+        profile_path = os.path.join(os.path.dirname(__file__), 'ceo_profile.yaml')
+        with open(profile_path, 'r', encoding='utf-8') as f:
+            profile_data = yaml.safe_load(f)
+    except Exception as e:
+        logger.warning(f"Could not load ceo_profile for morning briefing: {e}")
+
+    work_hours = profile_data.get("preferences", {}).get("working_hours", "Unknown")
+    train_constraints = profile_data.get("preferences", {}).get("training_constraints", "Unknown")
+    
+    prompt = f"Klockan är 07:00. Här är chefens kalender för dagen: {schema_text}\nArbetstider: {work_hours}\nTräningsrestriktioner: {train_constraints}\n\nGe honom en extremt strukturerad Battle Plan för dagen (träning, fokus och återhämtning). Lokalisera luckor i schemat och bestäm exakt NÄR han ska träna. Håll det kort, hårt och inspirerande. Ingen jävla daltande."
+    
+    battle_plan = await router.ask_cortex_direct_async(user_prompt=prompt, system_prompt=HEALTH_COACH_PROMPT)
+    
+    briefing = f"🌅 **The Morning Battle Plan**\n\n{battle_plan}\n\n_System Status: API Spend ${cfo.current_daily_spend:.2f}_"
     await reporter_instance.send_morning_briefing(briefing)
 
 async def check_reminders_job():
