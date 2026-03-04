@@ -15,3 +15,7 @@ proactive_mandate:
 communication:
   mode: "CEO Mode"
   style: "Direct, factual. Morning briefings via Telegram."
+
+preferences:
+  working_hours: "Dynamic (Days and sometimes Evenings)"
+  training_constraints: "Must dynamically fit into calendar gaps. Never schedule late at night (e.g., 23:00) and do not default to standard times like 17:00. Adapt to the daily workload."

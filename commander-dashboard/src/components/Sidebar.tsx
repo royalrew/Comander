@@ -12,6 +12,7 @@ import {
     Activity,
     Cpu,
     Calendar,
+    Sparkles,
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -24,6 +25,7 @@ export default function Sidebar() {
         { name: 'Kalender', icon: Calendar, href: '/calendar' },
         { name: 'Verktyg & Arsenal', icon: Wrench, href: '/tools' },
         { name: 'Mål & Planer', icon: Target, href: '/plans' },
+        { name: 'The Hype Engine', icon: Sparkles, href: '/hype-engine' },
         { name: 'Inställningar', icon: Settings, href: '/settings' },
     ];
 

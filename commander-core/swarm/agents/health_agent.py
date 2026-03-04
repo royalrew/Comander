@@ -4,18 +4,20 @@ from swarm.state import AgentState
 from langgraph.prebuilt import create_react_agent
 from swarm.tools import memorize_fact, manage_calendar_event, get_calendar_view
 
+import yaml
+
 llm = ChatOpenAI(model=os.getenv("CORTEX_MODEL", "gpt-4o"), temperature=0.7)
 
-HEALTH_COACH_PROMPT = """Du är The Health Coach (En vetenskaplig och empatisk elit-tränare).
-Ditt jobb är att ansvara för CEO:ns fysiska och mentala prestationer, stressnivå, sömn och återhämtning.
+HEALTH_COACH_PROMPT = """You are The Health Coach (An elite fusion of Andrew Huberman and David Goggins).
+Your mission is to obsessively optimize the CEO's physical and mental performance, stress, sleep, and recovery.
 
-REGLER:
-1. Om användaren mår dåligt eller har sovit uselt – var stöttande! Gå inte direkt på strikta frågor. Möt dem där de är. Fråga hur du kan underlätta deras dag.
-2. Lär känna dem över tid. Använd 'memorize_fact' FÖR ATT SPARA DET PERMANENT när de delar med sig av viktiga detaljer (t.ex. mål, skador, preferenser).
-3. Du har tillgång till CEO:ns kalender. Använd 'get_calendar_view' för att se hur veckan ser ut.
-4. Du KAN och SKA boka in träningspass eller återhämtning i kalendern via 'manage_calendar_event' om det behövs (kategori="Health", prioritet="High", agent_id="HealthCoach").
-5. Håll svaren korta, mänskliga och insiktsfulla. Inte som ett formulär.
-6. Din output visas under 'HEALTH AGENT' på the Commander Dashboard.
+RULES:
+1. Be proactive, analytical, and highly structured. No fluff. Use harsh, motivating truths if they are slacking, but prescribe scientifically backed protocols for recovery.
+2. If they slept poorly or are stressed, prescribe immediate actionable protocols (e.g., physiological sighs, NSDR, specific hydration) and suggest adjusting the calendar structure.
+3. Use 'memorize_fact' to permanently save their specific biological data, injuries, goals, or schedule preferences.
+4. YOU OWN THEIR TRAINING CALENDAR. You must use 'get_calendar_view' to analyze their week, find optimal 60-90 minute gaps, and use 'manage_calendar_event' to proactively schedule (action="add") "Deep Work(out)" sessions. Ensure category="Health", priority="High", agent_id="HealthCoach", color="#10B981" (emerald).
+5. NEVER schedule workouts blindly. Respect their dynamic work shifts. NEVER schedule late at night (e.g., 23:00) and DO NOT default to generic times like 17:00. Adapt to their daily workload shown in the calendar.
+6. Keep responses highly structured, intense, and actionable. Your output is displayed in the Commander Dashboard's Health tab.
 """
 
 from langchain_core.messages import SystemMessage
@@ -29,8 +31,20 @@ async def health_coach_node(state: AgentState) -> AgentState:
     user_name = state.get("session_user_id", "CEO")
     curr_time = state.get("session_time", "Unknown")
     
+    # Read CEO profile securely
+    profile_data = {}
+    try:
+        profile_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ceo_profile.yaml')
+        with open(profile_path, 'r', encoding='utf-8') as f:
+            profile_data = yaml.safe_load(f)
+    except Exception as e:
+        print(f"Warning: Health agent could not load ceo_profile.yaml: {e}")
+
+    work_hours = profile_data.get("preferences", {}).get("working_hours", "Unknown")
+    train_constraints = profile_data.get("preferences", {}).get("training_constraints", "Unknown")
+
     # 1. Dynamically inject the System Persona to bypass any LangGraph kwargs bugs
-    dynamic_prompt = HEALTH_COACH_PROMPT + f"\n\n[CONTEXT]\nUser: {user_name}\nTime: {curr_time}\n"
+    dynamic_prompt = HEALTH_COACH_PROMPT + f"\n\n[CONTEXT]\nUser: {user_name}\nTime: {curr_time}\nWorking Hours: {work_hours}\nTraining Constraints: {train_constraints}\n"
     system_message = SystemMessage(content=dynamic_prompt)
     input_payload = [system_message] + messages
     
