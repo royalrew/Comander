@@ -1,8 +1,18 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { HeartPulse, Activity, Flame, UtilityPole, Send, Calendar, Battery, Zap } from 'lucide-react';
+import { HeartPulse, Activity, Flame, UtilityPole, Send, Calendar, Battery, Zap, Loader2 } from 'lucide-react';
 import AgentCard from '@/components/AgentCard';
+
+interface CalendarEvent {
+    id: string;
+    start_date: string;
+    start_time: string;
+    end_time?: string;
+    description: string;
+    category?: string;
+    agent_id?: string;
+}
 
 const MessageContent = ({ text }: { text: string }) => {
     const jsonRegex = /```json\s*(\{[\s\S]*?\})\s*```/;
@@ -51,7 +61,33 @@ export default function HealthClient() {
         { role: 'assistant', text: "Reporting for duty. I've synced your latest CEO Profile and calendar. Ready to schedule your next Deep Work(out). What's the protocol today?" }
     ]);
     const [isLoading, setIsLoading] = useState(false);
+    const [battlePlan, setBattlePlan] = useState<CalendarEvent[]>([]);
+    const [battlePlanLoading, setBattlePlanLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://comander-production.up.railway.app";
+
+    // Fetch upcoming health/work events for the Battle Plan
+    useEffect(() => {
+        async function fetchBattlePlan() {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/calendar`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const today = new Date().toISOString().split('T')[0];
+                    const upcoming = (data.events || [])
+                        .filter((e: CalendarEvent) => e.start_date >= today)
+                        .sort((a: CalendarEvent, b: CalendarEvent) => a.start_date.localeCompare(b.start_date) || a.start_time.localeCompare(b.start_time))
+                        .slice(0, 10);
+                    setBattlePlan(upcoming);
+                }
+            } catch (e) {
+                console.error('Failed to fetch battle plan', e);
+            } finally {
+                setBattlePlanLoading(false);
+            }
+        }
+        fetchBattlePlan();
+    }, [API_URL]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -69,9 +105,9 @@ export default function HealthClient() {
         setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
         setIsLoading(true);
 
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://comander-production.up.railway.app";
+        const API_URL_SEND = process.env.NEXT_PUBLIC_API_URL || "https://comander-production.up.railway.app";
         try {
-            const res = await fetch(`${API_URL}/ask`, {
+            const res = await fetch(`${API_URL_SEND}/ask`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ query: userMsg, user_id: "Jimmy" })
@@ -102,6 +138,7 @@ export default function HealthClient() {
                     <div className="flex flex-col items-center justify-center w-40 h-40 rounded-full border-[6px] border-emerald-500/30 bg-black/40 shadow-[0_0_30px_theme(colors.emerald.500/20)]">
                         <span className="text-5xl font-black text-white tracking-tighter">84</span>
                         <span className="text-xs uppercase font-bold tracking-widest text-emerald-400 mt-1">Readiness</span>
+                        <span className="text-[8px] text-zinc-500 mt-0.5">Awaiting Oura</span>
                     </div>
                     {/* Text block */}
                     <div className="flex-1 text-center md:text-left">
@@ -110,7 +147,7 @@ export default function HealthClient() {
                         </div>
                         <h2 className="text-2xl font-bold text-white mb-2">Prime condition for a heavy lift.</h2>
                         <p className="text-zinc-400 max-w-lg">
-                            Sleep quality was excellent (7h 45m). Resting heart rate is down to 48 bpm. The calendar shows a 90-minute gap at 14:30. Let's load the barbell.
+                            Biometrisk data synkas snart via Oura Ring / Apple HealthKit. Tills dess, använd Coach Terminal'en nedan.
                         </p>
                     </div>
                 </div>
@@ -120,20 +157,20 @@ export default function HealthClient() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <AgentCard
                     title="DAILY STEPS"
-                    value="4,231"
-                    subtitle="Goal: 10,000"
+                    value="—"
+                    subtitle="Awaiting HealthKit"
                     icon={<Activity size={24} />}
                 />
                 <AgentCard
                     title="SLEEP SCORE"
-                    value="88"
-                    subtitle="Oura Sync Status: Mocked"
+                    value="—"
+                    subtitle="Awaiting Oura Sync"
                     icon={<UtilityPole size={24} />}
                 />
                 <AgentCard
                     title="ACTIVE CALORIES"
-                    value="310 kcal"
-                    subtitle="Goal: 700 kcal"
+                    value="—"
+                    subtitle="Awaiting HealthKit"
                     icon={<Flame size={24} />}
                 />
             </div>
@@ -207,47 +244,38 @@ export default function HealthClient() {
                     </h2>
 
                     <div className="flex-1 overflow-y-auto pr-2">
-                        <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
-                            {/* Dummy Timeline Items */}
-                            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                                <div className="flex items-center justify-center w-10 h-10 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
-                                    <Zap size={16} />
-                                </div>
-                                <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-white/5 bg-black/40">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="font-bold text-emerald-400 text-sm">Today, 14:30</span>
-                                    </div>
-                                    <div className="text-white font-bold mb-1">Deep Work(out): Legs</div>
-                                    <div className="text-xs text-zinc-400">Squats, Romanian Deadlifts, Bulgarian Split Squats. Scheduled during a 90m calendar gap.</div>
-                                </div>
+                        {battlePlanLoading ? (
+                            <div className="flex items-center justify-center h-full text-zinc-500">
+                                <Loader2 size={24} className="animate-spin mr-2" /> Laddar schema...
                             </div>
-
-                            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
-                                <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white/10 bg-black/40 text-zinc-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
-                                    <HeartPulse size={16} />
-                                </div>
-                                <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-white/5 bg-white/5 opacity-50">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="font-bold text-zinc-400 text-sm">Tomorrow, 08:00</span>
-                                    </div>
-                                    <div className="text-white font-bold mb-1">Recovery Run (Zone 2)</div>
-                                    <div className="text-xs text-zinc-400">45 minutes easy pace. Pre-meeting cardiovascular tune-up.</div>
-                                </div>
+                        ) : battlePlan.length === 0 ? (
+                            <div className="flex items-center justify-center h-full text-zinc-500 text-center">
+                                <p>Inga kommande händelser. Be Coachen schemalägga träning!</p>
                             </div>
-
-                            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
-                                <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white/10 bg-black/40 text-zinc-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
-                                    <Zap size={16} />
-                                </div>
-                                <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-white/5 bg-white/5 opacity-50">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="font-bold text-zinc-400 text-sm">Thursday, 18:00</span>
-                                    </div>
-                                    <div className="text-white font-bold mb-1">Deep Work(out): Push</div>
-                                    <div className="text-xs text-zinc-400">Overhead Press, Bench, Triceps. Scheduled immediately after your 17:00 Q3 Sync.</div>
-                                </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {battlePlan.map((evt, idx) => {
+                                    const isHealth = evt.category === 'Health' || evt.agent_id === 'HealthCoach';
+                                    const isToday = evt.start_date === new Date().toISOString().split('T')[0];
+                                    return (
+                                        <div key={evt.id || idx} className={`p-4 rounded-xl border transition-all ${isHealth
+                                                ? 'border-emerald-500/30 bg-emerald-500/5'
+                                                : 'border-white/5 bg-white/5'
+                                            } ${isToday ? 'ring-1 ring-blue-500/50' : 'opacity-70'}`}>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className={`font-bold text-sm ${isToday ? 'text-blue-400' : 'text-zinc-400'}`}>
+                                                    {evt.start_date} • {evt.start_time}{evt.end_time ? `-${evt.end_time}` : ''}
+                                                </span>
+                                                {evt.agent_id && (
+                                                    <span className="text-[10px] uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">{evt.agent_id}</span>
+                                                )}
+                                            </div>
+                                            <div className="text-white font-bold">{evt.description}</div>
+                                        </div>
+                                    );
+                                })}
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
