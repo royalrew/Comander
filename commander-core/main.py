@@ -75,6 +75,13 @@ async def check_reminders_job():
     for r in reminders:
         await reporter_instance.send_alert(f"⏰ **Påminnelse:**\n{r['description']}")
 
+async def github_code_review_job():
+    """Reads latest commits and performs an AI code review."""
+    from reporter import reporter_instance
+    # TODO: Connect to actual GitHub Agent
+    logger.info("Executing GitHub Code Review...")
+    await reporter_instance.send_alert("🔍 **GitHub Code Review Initiated:**\nGranskar de senaste kodändringarna för potentiella buggar eller säkerhetsrisker...")
+
 async def main():
     logger.info("Booting Commander Core (CEO Mode)...")
     
@@ -93,6 +100,9 @@ async def main():
 
     # Check for reminders every minute
     commander_scheduler.add_job(check_reminders_job, 'cron', minute='*', id='check_reminders', name='Calendar Reminders')
+    
+    # Run GitHub Code Review daily at 18:00
+    commander_scheduler.add_job(github_code_review_job, 'cron', hour=18, minute=0, id='github_code_review', name='GitHub Code Review')
     
     commander_scheduler.start()
     logger.info("APScheduler Proactive Loops Started.")
