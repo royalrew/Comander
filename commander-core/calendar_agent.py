@@ -113,12 +113,22 @@ class CalendarAgent:
             db.close()
 
     def delete_event(self, event_id: str) -> bool:
+        """Deletes a single event by its UUID. Logs the deletion to the audit trail."""
+        import logging
+        logger = logging.getLogger(__name__)
         from database import SessionLocal
-        from models import EventDB
+        from models import EventDB, SystemLogDB
         db = SessionLocal()
         try:
             event = db.query(EventDB).filter(EventDB.id == str(event_id)).first()
             if event:
+                logger.warning(f"CALENDAR DELETE: Removing event '{event.description}' on {event.start_date} {event.start_time} (ID: {event_id})")
+                # Audit log the deletion
+                audit_entry = SystemLogDB(
+                    action_type="calendar_delete",
+                    details=f"Deleted: '{event.description}' on {event.start_date} {event.start_time}-{event.end_time} (ID: {event_id})"
+                )
+                db.add(audit_entry)
                 db.delete(event)
                 db.commit()
                 return True

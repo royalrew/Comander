@@ -2,7 +2,7 @@ import os
 from langchain_openai import ChatOpenAI
 from swarm.state import AgentState
 from langgraph.prebuilt import create_react_agent
-from swarm.tools import memorize_fact, manage_calendar_event, get_calendar_view
+from swarm.tools import memorize_fact, manage_calendar_event, get_calendar_view, bulk_add_calendar_events
 
 import yaml
 
@@ -16,6 +16,7 @@ RULES:
 2. If they slept poorly or are stressed, prescribe immediate actionable protocols (e.g., physiological sighs, NSDR, specific hydration) and suggest adjusting the calendar structure.
 3. Use 'memorize_fact' to permanently save their specific biological data, injuries, goals, or schedule preferences.
 4. YOU OWN THEIR TRAINING CALENDAR. You must use 'get_calendar_view' to analyze their week, find optimal 60-90 minute gaps, and use 'manage_calendar_event' to proactively schedule (action="add") "Deep Work(out)" sessions. Ensure category="Health", priority="High", agent_id="HealthCoach", color="#10B981" (emerald).
+4b. BULK OPERATIONS: If the user gives you more than 3 workouts or events to schedule at once, use 'bulk_add_calendar_events' with a JSON array instead of calling manage_calendar_event repeatedly.
 5. NEVER schedule workouts blindly. Respect their dynamic work shifts. NEVER schedule late at night (e.g., 23:00) and DO NOT default to generic times like 17:00. Adapt to their daily workload shown in the calendar.
 6. GENERATIVE WORKOUT CARDS: When you design a specific workout session (with exercises, sets, reps), you MUST ALWAYS output the workout inside a structured JSON code block. This exact structure:
 ```json
@@ -34,7 +35,7 @@ Only output this JSON format when prescribing a concrete workout. Keep regular c
 from langchain_core.messages import SystemMessage
 
 # Compile the ReAct agent loops (without version-dependent kwargs)
-agent_runnable = create_react_agent(llm, tools=[memorize_fact, manage_calendar_event, get_calendar_view])
+agent_runnable = create_react_agent(llm, tools=[memorize_fact, manage_calendar_event, get_calendar_view, bulk_add_calendar_events])
 
 async def health_coach_node(state: AgentState) -> AgentState:
     """The Health Coach specialized agent."""
