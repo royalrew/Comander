@@ -130,11 +130,19 @@ async def main():
     config = uvicorn.Config(app="api:app", host="0.0.0.0", port=port, loop="asyncio")
     server = uvicorn.Server(config)
     
-    logger.info(f"Starting FastAPI on 0.0.0.0:{port} & Telegram Polling concurrently...")
-    await asyncio.gather(
-        server.serve(),
-        start_telegram_polling()
-    )
+    logger.info(f"Starting FastAPI on 0.0.0.0:{port}...")
+    
+    disable_telegram = os.getenv("DISABLE_TELEGRAM", "false").lower() == "true"
+    
+    if disable_telegram:
+        logger.info("⚠️  DISABLE_TELEGRAM=true → Telegram polling is OFF. Only API server is running.")
+        await server.serve()
+    else:
+        logger.info("Starting Telegram Polling concurrently with API server...")
+        await asyncio.gather(
+            server.serve(),
+            start_telegram_polling()
+        )
 
 if __name__ == "__main__":
     try:
