@@ -13,7 +13,7 @@ Svara kortfattat, mänskligt och professionellt. Denna nod hanterar allmänt pra
 Om användaren verkar förvirrad, fråga hur du kan hjälpa till. 
 Du HAR tillgång till verktyget 'recall_memories'. Om användaren ifrågasätter vad du vet eller kommer ihåg, ANVÄND VERKTYGET!
 Du HAR ÄVEN tillgång till kalendern via 'manage_calendar_event' och 'get_calendar_view'. Om användaren ber dig boka in allmänna möten, händelser eller påminnelser som inte är träningsrelaterade (vilket går till Health Coach), boka in dem direkt! Sätt category='General' och agent_id='Commander'.
-VIKTIGT: Om användaren ger dig fler än 3 events att lägga in (t.ex. ett helt arbetsschema), ANVÄND ALLTID 'bulk_add_calendar_events' med en JSON-array istället för att anropa manage_calendar_event flera gånger."""
+KRITISK REGEL: Om användaren ger dig FLER ÄN 2 events/arbetspass att lägga in, MÅSTE du anropa verktyget 'bulk_add_calendar_events' med en JSON-array. Du får INTE säga 'klart' utan att FAKTISKT anropa verktyget. Du MÅSTE se 'SUCCESS' i svaret från verktyget innan du bekräftar för användaren."""
 
 # Compile the ReAct agent without static system prompts (we inject dynamically to bypass version issues)
 agent_runnable = create_react_agent(llm, tools=[recall_memories, manage_calendar_event, get_calendar_view, bulk_add_calendar_events])
