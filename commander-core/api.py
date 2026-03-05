@@ -54,10 +54,9 @@ async def get_cortex_status():
     count = 0
     try:
         from memory_module import memory_bank
-        if memory_bank.client and memory_bank.client.indices.exists(index="commander_core_memory"):
-            count = memory_bank.client.count(index="commander_core_memory")['count']
+        count = memory_bank.count_memories()
     except Exception as e:
-        print(f"Error checking OpenSearch count: {e}")
+        print(f"Error checking memory count: {e}")
         
     return {
         "heartbeat": "stable",
@@ -81,22 +80,19 @@ async def get_cortex_logs():
 
 @app.get("/api/v1/cortex/memories")
 async def get_cortex_memories():
-    """Returns the last 5 indexed thoughts from OpenSearch."""
-    from memory_module import memory_bank
-    if not memory_bank.client: return {"memories": []}
-    
-    search_query = {
-        "size": 5,
-        "query": {"match_all": {}},
-        "sort": [{"timestamp": {"order": "desc"}}],
-        "_source": ["text", "category", "timestamp"]
-    }
+    """Returns the last 5 stored memories from pgvector."""
     try:
-        if memory_bank.client.indices.exists(index="commander_core_memory"):
-            response = memory_bank.client.search(index="commander_core_memory", body=search_query)
-            hits = response["hits"]["hits"]
-            return {"memories": [{"id": h["_id"], **h["_source"]} for h in hits]}
-        return {"memories": []}
+        from sqlalchemy import text as sql_text
+        from database import engine
+        with engine.connect() as conn:
+            result = conn.execute(sql_text("""
+                SELECT id, text, category, timestamp 
+                FROM memories 
+                ORDER BY timestamp DESC 
+                LIMIT 5
+            """))
+            rows = result.fetchall()
+            return {"memories": [{"id": str(r[0]), "text": r[1], "category": r[2], "timestamp": r[3].isoformat() if r[3] else None} for r in rows]}
     except Exception as e:
         return {"memories": [], "error": str(e)}
 

@@ -9,8 +9,8 @@ litellm==1.41.24
 # Replace with actual image/music generation libraries if using official SDKs
 # openai==1.35.10 (if needed natively outside litellm)
 
-# Memory & Search
-opensearch-py==2.6.0
+# Memory & Vector Search (PostgreSQL + numpy cosine similarity)
+numpy
 Pillow
 duckduckgo-search
 langgraph>=0.2.20
@@ -40,5 +40,4 @@ aiogram==3.10.0
 # Finance (CFO module)
 stripe==10.4.0
 
-# Vector DB
-opensearch-py==2.6.0
+# Vector DB (now using pgvector via PostgreSQL, no separate service needed)

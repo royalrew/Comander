@@ -310,7 +310,7 @@ async def callbacks_handlers(callback: types.CallbackQuery):
                 f"**Tema:** Cyberpunk Enterprise GRC Agent\n"
                 f"**Länk till Bild:** [Visa på R2]({result['assets']['image']})\n\n"
                 f"**Viralt Inlägg Genererat:**\n{result['caption']}\n\n"
-                f"*(Sparat säkert i OpenSearch Minnesbank)*"
+                f"*(Sparat säkert i Minnesbanken)*"
             )
             await callback.message.answer(msg, parse_mode="Markdown", disable_web_page_preview=False)
         except Exception as e:

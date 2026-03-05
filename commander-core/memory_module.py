@@ -1,134 +1,173 @@
+"""Memory Bank – PostgreSQL edition (no pgvector extension required).
+Stores and retrieves AI memories using PostgreSQL with in-application cosine similarity.
+Drop-in replacement for the previous OpenSearch-based implementation.
+
+Strategy: 
+- Embeddings are stored as JSON arrays in a TEXT column.
+- On search, all embeddings are loaded and cosine similarity is computed in Python.
+- This is highly performant for <10,000 memories (CEO single-user scenario).
+"""
+
 import os
+import json
 import logging
-from opensearchpy import OpenSearch
+import uuid
+import numpy as np
+from datetime import datetime
 from litellm import embedding
 from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-OPENSEARCH_URL = os.getenv("OPENSEARCH_URL")
-OPENSEARCH_USERNAME = os.getenv("OPENSEARCH_USERNAME")
-OPENSEARCH_PWD = os.getenv("OPENSEARCH_PWD")
-INDEX_NAME = os.getenv("OPENSEARCH_INDEX_NAME", "commander_core_memory")
 EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_DIMS = 1536
+
 
 class MemoryBank:
+    """Persistent vector memory using PostgreSQL with in-app similarity search.
+    
+    Provides the same interface as the previous OpenSearch-based MemoryBank:
+    - store_memory(category, text) -> (bool, str)
+    - search_memory(query, limit) -> list[dict]
+    """
+
     def __init__(self):
-        if not OPENSEARCH_URL:
-            logger.warning("OPENSEARCH_URL is not set. Memory Bank will be disabled.")
-            self.client = None
-            return
-
-        host = OPENSEARCH_URL.replace("https://", "").replace("http://", "")
-        port = 443
-        if ":" in host:
-            host, port_str = host.split(":")
-            port = int(port_str.split("/")[0])
-
-        self.client = OpenSearch(
-            hosts=[{'host': host, 'port': port}],
-            http_auth=(OPENSEARCH_USERNAME, OPENSEARCH_PWD),
-            use_ssl=True,
-            verify_certs=True,
-            ssl_show_warn=False
-        )
-        self._ensure_index()
-
-    def _ensure_index(self):
-        """Creates the k-NN index if it doesn't already exist."""
-        if not self.client: return
-        
+        """Initializes the PostgreSQL-based memory bank."""
         try:
-            if not self.client.indices.exists(index=INDEX_NAME):
-                index_body = {
-                    "settings": {
-                        "index": {
-                            "knn": True,
-                            "knn.algo_param.ef_search": 100
-                        }
-                    },
-                    "mappings": {
-                        "properties": {
-                            "text": {"type": "text"},
-                            "category": {"type": "keyword"},
-                            "timestamp": {"type": "date"},
-                            "embedding": {
-                                "type": "knn_vector",
-                                "dimension": 1536,
-                                "method": {
-                                    "name": "hnsw",
-                                    "space_type": "cosinesimil",
-                                    "engine": "lucene"
-                                }
-                            }
-                        }
-                    }
-                }
-                self.client.indices.create(index=INDEX_NAME, body=index_body)
-                logger.info(f"Created OpenSearch Index: {INDEX_NAME}")
+            from database import engine
+            from sqlalchemy import text as sql_text
+
+            self.engine = engine
+
+            # Create the memories table if it doesn't exist
+            with engine.begin() as conn:
+                conn.execute(sql_text("""
+                    CREATE TABLE IF NOT EXISTS memories (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        text TEXT NOT NULL,
+                        category VARCHAR(100) DEFAULT 'General',
+                        timestamp TIMESTAMPTZ DEFAULT NOW(),
+                        embedding TEXT
+                    )
+                """))
+
+            logger.info("MemoryBank initialized with PostgreSQL (in-app cosine similarity).")
+            self.enabled = True
         except Exception as e:
-            logger.error(f"Failed to ensure OpenSearch Index: {e}")
+            logger.error(f"Failed to initialize MemoryBank: {e}")
+            self.enabled = False
 
     def _get_embedding(self, text: str) -> list[float]:
+        """Generates an embedding vector for the given text using OpenAI."""
         try:
-            # Uses OPENAI_API_KEY from environment
             response = embedding(model=EMBEDDING_MODEL, input=text)
             return response.data[0]['embedding']
         except Exception as e:
             logger.error(f"Embedding failed: {e}")
             return []
 
+    @staticmethod
+    def _cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
+        """Computes cosine similarity between two vectors using numpy."""
+        a = np.array(vec_a)
+        b = np.array(vec_b)
+        dot = np.dot(a, b)
+        norm_a = np.linalg.norm(a)
+        norm_b = np.linalg.norm(b)
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+        return float(dot / (norm_a * norm_b))
+
     def store_memory(self, category: str, text: str) -> tuple[bool, str]:
-        """Embeds and saves a new fact to OpenSearch. Returns (success, error_msg)."""
-        if not self.client: 
-            return False, "Memory Bank is disabled (OPENSEARCH_URL missing)."
-        
+        """Embeds and saves a new fact to PostgreSQL. Returns (success, error_msg)."""
+        if not self.enabled:
+            return False, "Memory Bank is disabled (init failed)."
+
         vector = self._get_embedding(text)
-        if not vector: 
+        if not vector:
             return False, "Embedding failed via LiteLLM."
-        
-        from datetime import datetime
-        doc = {
-            "text": text,
-            "category": category,
-            "timestamp": datetime.utcnow().isoformat(),
-            "embedding": vector
-        }
-        
+
         try:
-            self.client.index(index=INDEX_NAME, body=doc, refresh=True)
+            from sqlalchemy import text as sql_text
+            with self.engine.begin() as conn:
+                conn.execute(
+                    sql_text("""
+                        INSERT INTO memories (id, text, category, timestamp, embedding)
+                        VALUES (:id, :text, :category, :ts, :embedding)
+                    """),
+                    {
+                        "id": str(uuid.uuid4()),
+                        "text": text,
+                        "category": category,
+                        "ts": datetime.utcnow().isoformat(),
+                        "embedding": json.dumps(vector)
+                    }
+                )
             return True, ""
         except Exception as e:
-            logger.error(f"Failed to store memory to OpenSearch: {e}")
+            logger.error(f"Failed to store memory: {e}")
             return False, str(e)
 
     def search_memory(self, query: str, limit: int = 5) -> list[dict]:
-        """Performs a vector similarity search for relevant memories."""
-        if not self.client: return []
+        """Performs a vector similarity search for relevant memories.
         
-        vector = self._get_embedding(query)
-        if not vector: return []
-        
-        search_query = {
-            "size": limit,
-            "query": {
-                "knn": {
-                    "embedding": {
-                        "vector": vector,
-                        "k": limit
-                    }
-                }
-            },
-            "_source": ["text", "category", "timestamp"]
-        }
-        
-        try:
-            response = self.client.search(index=INDEX_NAME, body=search_query)
-            hits = response["hits"]["hits"]
-            return [hit["_source"] for hit in hits]
-        except Exception as e:
-            logger.error(f"Failed to search OpenSearch: {e}")
+        Loads all embeddings from PostgreSQL and computes cosine similarity in Python.
+        Highly efficient for <10,000 memories.
+        """
+        if not self.enabled:
             return []
+
+        query_vec = self._get_embedding(query)
+        if not query_vec:
+            return []
+
+        try:
+            from sqlalchemy import text as sql_text
+            with self.engine.connect() as conn:
+                result = conn.execute(sql_text(
+                    "SELECT id, text, category, timestamp, embedding FROM memories"
+                ))
+                rows = result.fetchall()
+
+            # Compute cosine similarity for each memory
+            scored = []
+            for row in rows:
+                mem_id, mem_text, mem_cat, mem_ts, mem_emb_json = row
+                if not mem_emb_json:
+                    continue
+                try:
+                    mem_vec = json.loads(mem_emb_json)
+                    score = self._cosine_similarity(query_vec, mem_vec)
+                    scored.append({
+                        "text": mem_text,
+                        "category": mem_cat,
+                        "timestamp": mem_ts.isoformat() if mem_ts else None,
+                        "score": score
+                    })
+                except (json.JSONDecodeError, ValueError):
+                    continue
+
+            # Sort by score descending and return top results
+            scored.sort(key=lambda x: x["score"], reverse=True)
+            return scored[:limit]
+
+        except Exception as e:
+            logger.error(f"Failed to search memories: {e}")
+            return []
+
+    def count_memories(self) -> int:
+        """Returns the total number of stored memories."""
+        if not self.enabled:
+            return 0
+        try:
+            from sqlalchemy import text as sql_text
+            with self.engine.connect() as conn:
+                result = conn.execute(sql_text("SELECT COUNT(*) FROM memories"))
+                return result.scalar() or 0
+        except Exception as e:
+            logger.error(f"Failed to count memories: {e}")
+            return 0
+
 
 memory_bank = MemoryBank()
