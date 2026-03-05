@@ -70,11 +70,11 @@ async def morning_briefing_job():
     work_hours = profile_data.get("preferences", {}).get("working_hours", "Unknown")
     train_constraints = profile_data.get("preferences", {}).get("training_constraints", "Unknown")
     
-    prompt = f"Klockan är 07:00. Här är chefens kalender för dagen: {schema_text}\nArbetstider: {work_hours}\nTräningsrestriktioner: {train_constraints}\n\nGe honom en extremt strukturerad Battle Plan för dagen (träning, fokus och återhämtning). Lokalisera luckor i schemat och bestäm exakt NÄR han ska träna. Håll det kort, hårt och inspirerande. Ingen jävla daltande."
+    prompt = f"Klockan är 07:00. Svara PÅ SVENSKA. Här är chefens kalender för dagen: {schema_text}\nArbetstider: {work_hours}\nTräningsrestriktioner: {train_constraints}\n\nGe honom en extremt strukturerad Battle Plan för dagen (träning, fokus och återhämtning). Lokalisera luckor i schemat och bestäm exakt NÄR han ska träna. Håll det kort, hårt och inspirerande. Ingen jävla daltande. ALLT på svenska."
     
     battle_plan = await router.ask_cortex_direct_async(user_prompt=prompt, system_prompt=HEALTH_COACH_PROMPT)
     
-    briefing = f"🌅 **The Morning Battle Plan**\n\n{battle_plan}\n\n_System Status: API Spend ${cfo.current_daily_spend:.2f}_"
+    briefing = f"🌅 **Morgonens Stridsplan**\n\n{battle_plan}\n\n_Systemstatus: API-kostnad ${cfo.current_daily_spend:.2f}_"
     await reporter_instance.send_morning_briefing(briefing)
 
 async def check_reminders_job():
