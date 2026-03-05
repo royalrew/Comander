@@ -84,7 +84,7 @@ export default function HypeEnginePage() {
         setLoadingMessage("Laddar upp bild...");
 
         try {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://comander-production.up.railway.app";
             const formData = new FormData();
             formData.append("image", selectedImage);
             formData.append("track", selectedTrack);

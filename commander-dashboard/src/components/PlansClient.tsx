@@ -10,7 +10,7 @@ export default function PlansClient() {
     const [isLoading, setIsLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://comander-production.up.railway.app';
 
     const fetchJobs = async () => {
         try {
