@@ -58,7 +58,7 @@ const MessageContent = ({ text }: { text: string }) => {
 export default function HealthClient() {
     const [query, setQuery] = useState("");
     const [messages, setMessages] = useState<any[]>([
-        { role: 'assistant', text: "Reporting for duty. I've synced your latest CEO Profile and calendar. Ready to schedule your next Deep Work(out). What's the protocol today?" }
+        { role: 'assistant', text: "Står redo! Jag har synkat din CEO Profil och kalendern. Redo att utforma din nästa Deep Work(out). Vad är dagens protokoll?" }
     ]);
     const [isLoading, setIsLoading] = useState(false);
     const [battlePlan, setBattlePlan] = useState<CalendarEvent[]>([]);
@@ -117,10 +117,10 @@ export default function HealthClient() {
                 const data = await res.json();
                 setMessages(prev => [...prev, { role: 'assistant', text: data.response_text }]);
             } else {
-                setMessages(prev => [...prev, { role: 'assistant', text: "Coach Error: System is currently resting. Try again." }]);
+                setMessages(prev => [...prev, { role: 'assistant', text: "Coachens Fel: The Commander vilar just nu. Försök igen om en stund." }]);
             }
         } catch (e) {
-            setMessages(prev => [...prev, { role: 'assistant', text: "Coach Sync Error: Unable to reach the Command Center." }]);
+            setMessages(prev => [...prev, { role: 'assistant', text: "Coach Synk Fel: Kan ej nå Command Center." }]);
         } finally {
             setIsLoading(false);
         }
@@ -137,15 +137,15 @@ export default function HealthClient() {
                     {/* Gauge/Score */}
                     <div className="flex flex-col items-center justify-center w-40 h-40 rounded-full border-[6px] border-emerald-500/30 bg-black/40 shadow-[0_0_30px_theme(colors.emerald.500/20)]">
                         <span className="text-5xl font-black text-white tracking-tighter">84</span>
-                        <span className="text-xs uppercase font-bold tracking-widest text-emerald-400 mt-1">Readiness</span>
-                        <span className="text-[8px] text-zinc-500 mt-0.5">Awaiting Oura</span>
+                        <span className="text-xs uppercase font-bold tracking-widest text-emerald-400 mt-1">Beredskap</span>
+                        <span className="text-[8px] text-zinc-500 mt-0.5">Väntar på Oura</span>
                     </div>
                     {/* Text block */}
                     <div className="flex-1 text-center md:text-left">
                         <div className="inline-flex items-center gap-2 px-2 py-1 mb-3 text-[10px] font-bold tracking-widest uppercase rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            <Zap size={12} /> Optimal Recovery
+                            <Zap size={12} /> Optimal Återhämtning
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-2">Prime condition for a heavy lift.</h2>
+                        <h2 className="text-2xl font-bold text-white mb-2">Prime condition för ett tungt lyft.</h2>
                         <p className="text-zinc-400 max-w-lg">
                             Biometrisk data synkas snart via Oura Ring / Apple HealthKit. Tills dess, använd Coach Terminal'en nedan.
                         </p>
@@ -156,21 +156,21 @@ export default function HealthClient() {
             {/* Sub-metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <AgentCard
-                    title="DAILY STEPS"
+                    title="STEG IDAG"
                     value="—"
-                    subtitle="Awaiting HealthKit"
+                    subtitle="Väntar på HealthKit"
                     icon={<Activity size={24} />}
                 />
                 <AgentCard
-                    title="SLEEP SCORE"
+                    title="SÖMNSCORE"
                     value="—"
-                    subtitle="Awaiting Oura Sync"
+                    subtitle="Väntar på Oura Synk"
                     icon={<UtilityPole size={24} />}
                 />
                 <AgentCard
-                    title="ACTIVE CALORIES"
+                    title="AKTIVA KALORIER"
                     value="—"
-                    subtitle="Awaiting HealthKit"
+                    subtitle="Väntar på HealthKit"
                     icon={<Flame size={24} />}
                 />
             </div>
@@ -204,7 +204,7 @@ export default function HealthClient() {
                                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                                     </div>
-                                    <span className="animate-pulse">Analyzing biometa...</span>
+                                    <span className="animate-pulse">Läser in biometa...</span>
                                 </div>
                             </div>
                         )}
@@ -222,7 +222,7 @@ export default function HealthClient() {
                                     handleSend();
                                 }
                             }}
-                            placeholder="Consult your coach..."
+                            placeholder="Konsultera din coach..."
                             disabled={isLoading}
                             className="w-full bg-black/60 border border-white/10 rounded-2xl pl-4 pr-12 py-4 text-sm text-white focus:outline-none focus:border-emerald-500/50 resize-none h-[60px]"
                         />
@@ -240,7 +240,7 @@ export default function HealthClient() {
                 <div className="glass rounded-3xl border border-white/5 p-6 flex flex-col h-[600px]">
                     <h2 className="text-xl font-bold flex items-center gap-3 text-white mb-6">
                         <Calendar className="text-blue-500" />
-                        Weekly Battle Plan
+                        Veckans Battle Plan
                     </h2>
 
                     <div className="flex-1 overflow-y-auto pr-2">
@@ -259,8 +259,8 @@ export default function HealthClient() {
                                     const isToday = evt.start_date === new Date().toISOString().split('T')[0];
                                     return (
                                         <div key={evt.id || idx} className={`p-4 rounded-xl border transition-all ${isHealth
-                                                ? 'border-emerald-500/30 bg-emerald-500/5'
-                                                : 'border-white/5 bg-white/5'
+                                            ? 'border-emerald-500/30 bg-emerald-500/5'
+                                            : 'border-white/5 bg-white/5'
                                             } ${isToday ? 'ring-1 ring-blue-500/50' : 'opacity-70'}`}>
                                             <div className="flex items-center justify-between mb-1">
                                                 <span className={`font-bold text-sm ${isToday ? 'text-blue-400' : 'text-zinc-400'}`}>

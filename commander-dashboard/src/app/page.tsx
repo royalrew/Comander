@@ -40,7 +40,7 @@ export default async function DashboardPage() {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight steel-text">
-            The Commander
+            Sintari
           </h1>
           <p className="mt-2 text-muted-foreground">
             Enterprise GRC Autonom Agent — Genesis Protokoll Aktivt
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
             "Automatisering ger fokus. Fokus ger frihet."
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Commandern orkestrerar för närvarande The Hype Engine.
+            Sintari orkestrerar för närvarande Hype Engine.
             Alla deterministiska övervakare är aktiva och kontrollerar kodintegritet samt finansiella buffertar.
           </p>
         </div>
@@ -91,7 +91,7 @@ export default async function DashboardPage() {
           <div className="p-8 glass rounded-3xl border border-white/5 flex flex-col gap-6">
             <h2 className="text-xl font-bold flex items-center gap-3">
               <Lock className="text-amber-500" />
-              Arsenal Control
+              Arsenalkontroll
             </h2>
 
             <div className="space-y-4">
@@ -112,7 +112,7 @@ export default async function DashboardPage() {
             </div>
 
             <div className="mt-auto">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Scraping Whitelist</h3>
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Scraping Vitlista</h3>
               <textarea
                 className="w-full h-24 p-3 rounded-xl bg-black/40 border border-white/10 text-sm text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
                 defaultValue={"github.com/royalrew/*\nnews.ycombinator.com\nstripe.com/docs/*"}
@@ -143,7 +143,7 @@ export default async function DashboardPage() {
 
             <div className="mt-auto pt-4 border-t border-white/10">
               <h3 className="text-xs font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <AlertCircle size={14} /> Goal Override
+                <AlertCircle size={14} /> Mål-Åsidosättning
               </h3>
               <div className="flex gap-2">
                 <input
@@ -152,7 +152,7 @@ export default async function DashboardPage() {
                   className="flex-1 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-sm focus:outline-none focus:border-red-500/50"
                 />
                 <button className="px-4 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-400 font-bold rounded-lg border border-red-500/30 transition-colors">
-                  KÖR OVERRIDE
+                  KÖR ÅSIDOSÄTTNING
                 </button>
               </div>
             </div>

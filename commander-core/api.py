@@ -141,6 +141,23 @@ class CalendarEventCreate(BaseModel):
     location: str | None = None
     color: str | None = None
 
+class CalendarDaySync(BaseModel):
+    date: str
+    events: list[dict]
+
+@app.put("/api/v1/calendar/sync_day")
+async def sync_calendar_day(payload: CalendarDaySync):
+    """Replaces all events on a specific day with the provided list of events."""
+    from calendar_agent import calendar_agent
+    try:
+        success = calendar_agent.sync_day(payload.date, payload.events)
+        if success:
+            return {"status": "success", "message": f"Synced {payload.date} with {len(payload.events)} events."}
+        else:
+            return {"status": "error", "message": "Failed to sync calendar day."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @app.get("/api/v1/calendar")
 async def get_all_calendar_events():
     """Returns all events from the calendar database for the Dashboard UI."""

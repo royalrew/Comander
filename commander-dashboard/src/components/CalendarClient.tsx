@@ -20,7 +20,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
         start_time: "09:00",
         end_time: "",
         description: "",
-        category: "General",
+        category: "Allmänt",
         priority: "Medium",
         location: "",
         agent_id: "",
@@ -28,6 +28,13 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
         is_reminder: true
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Daily Board state
+    const [isDailyBoardOpen, setIsDailyBoardOpen] = useState(false);
+    const [dailyBoardDate, setDailyBoardDate] = useState("");
+    const [dailyEvents, setDailyEvents] = useState<any[]>([]);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [draggedEvent, setDraggedEvent] = useState<any>(null);
 
     const today = new Date();
     const currentMonth = currentDate.getMonth();
@@ -44,14 +51,14 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
     const prevMonth = () => setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
     const nextMonth = () => setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
 
-    const openModal = (dateStr: string, existingEvent: any = null) => {
+    const openModal = (dateStr: string, existingEvent: any = null, defaultStartTime: string = "09:00") => {
         setSelectedDate(dateStr);
         if (existingEvent) {
             setFormData({
                 start_time: existingEvent.start_time,
                 end_time: existingEvent.end_time || "",
                 description: existingEvent.description,
-                category: existingEvent.category || "General",
+                category: existingEvent.category || "Allmänt",
                 priority: existingEvent.priority || "Medium",
                 location: existingEvent.location || "",
                 agent_id: existingEvent.agent_id || "",
@@ -61,10 +68,10 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
             setEditingEventId(existingEvent.id);
         } else {
             setFormData({
-                start_time: "09:00",
+                start_time: defaultStartTime,
                 end_time: "",
                 description: "",
-                category: "General",
+                category: "Allmänt",
                 priority: "Medium",
                 location: "",
                 agent_id: "",
@@ -74,6 +81,82 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
             setEditingEventId(null);
         }
         setIsModalOpen(true);
+    };
+
+    const openDailyBoard = (dateStr: string, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setDailyBoardDate(dateStr);
+        // Deep copy events for local editing
+        const dayEvts = JSON.parse(JSON.stringify(events.filter((evt: any) => evt.start_date === dateStr)));
+        setDailyEvents(dayEvts);
+        setIsDailyBoardOpen(true);
+    };
+
+    const handleSyncDay = async () => {
+        setIsSyncing(true);
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://comander-production.up.railway.app';
+        try {
+            await fetch(`${API_URL}/api/v1/calendar/sync_day`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date: dailyBoardDate,
+                    events: dailyEvents
+                })
+            });
+            router.refresh(); // Refresh RSC data from DB
+            setIsDailyBoardOpen(false);
+        } catch (error) {
+            console.error("Failed to sync day", error);
+        }
+        setIsSyncing(false);
+    };
+
+    const handleDragStart = (e: React.DragEvent, eventObj: any) => {
+        setDraggedEvent(eventObj);
+        e.dataTransfer.effectAllowed = 'move';
+        // Make it slightly transparent while dragging
+        setTimeout(() => {
+            if (e.target instanceof HTMLElement) e.target.style.opacity = '0.4';
+        }, 0);
+    };
+
+    const handleDragEnd = (e: React.DragEvent) => {
+        setDraggedEvent(null);
+        if (e.target instanceof HTMLElement) e.target.style.opacity = '1';
+    };
+
+    const handleDropOnHour = (e: React.DragEvent, targetHourHour: number, targetMinute: number = 0) => {
+        e.preventDefault();
+        if (!draggedEvent) return;
+
+        const newTimeStr = `${String(targetHourHour).padStart(2, '0')}:${String(targetMinute).padStart(2, '0')}`;
+
+        // Calculate original duration to preserve it
+        let durationMins = 60; // default 1h
+        if (draggedEvent.end_time) {
+            const [sH, sM] = draggedEvent.start_time.split(':').map(Number);
+            const [eH, eM] = draggedEvent.end_time.split(':').map(Number);
+            durationMins = (eH * 60 + eM) - (sH * 60 + sM);
+        }
+
+        const newEndHour = targetHourHour + Math.floor((targetMinute + durationMins) / 60);
+        const newEndMinute = (targetMinute + durationMins) % 60;
+        const newEndTimeStr = `${String(newEndHour).padStart(2, '0')}:${String(newEndMinute).padStart(2, '0')}`;
+
+        const updatedEvents = dailyEvents.map((evt) => {
+            if (evt.id === draggedEvent.id || (evt.start_time === draggedEvent.start_time && evt.description === draggedEvent.description)) {
+                return { ...evt, start_time: newTimeStr, end_time: newEndTimeStr };
+            }
+            return evt;
+        });
+
+        setDailyEvents(updatedEvents);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
     };
 
     const getCategoryColor = (category: string, overrideColor?: string) => {
@@ -100,6 +183,14 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
         e.preventDefault();
         if (!editingEventId) return;
         setIsSubmitting(true);
+
+        if (isDailyBoardOpen) {
+            setDailyEvents(dailyEvents.filter(evt => evt.id !== editingEventId));
+            setIsModalOpen(false);
+            setIsSubmitting(false);
+            return;
+        }
+
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://comander-production.up.railway.app';
         try {
             await fetch(`${API_URL}/api/v1/calendar/${editingEventId}`, { method: 'DELETE' });
@@ -114,6 +205,18 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
+
+        if (isDailyBoardOpen) {
+            if (editingEventId) {
+                setDailyEvents(dailyEvents.map(evt => evt.id === editingEventId ? { ...evt, ...formData } : evt));
+            } else {
+                setDailyEvents([...dailyEvents, { id: 'local-' + Date.now(), start_date: selectedDate, ...formData }]);
+            }
+            setIsModalOpen(false);
+            setIsSubmitting(false);
+            return;
+        }
+
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://comander-production.up.railway.app';
         try {
             const endpoint = editingEventId ? `${API_URL}/api/v1/calendar/${editingEventId}` : `${API_URL}/api/v1/calendar`;
@@ -194,7 +297,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                             const isToday = day === today.getDate();
 
                             return (
-                                <div key={day} className={`min-h-[140px] p-3 border-r border-b border-white/5 relative group transition-colors hover:bg-white/5 ${isToday ? 'bg-blue-500/5' : ''}`}>
+                                <div onClick={() => openDailyBoard(dateString)} key={day} className={`min-h-[140px] p-3 border-r border-b border-white/5 relative group cursor-pointer transition-colors hover:bg-white/5 ${isToday ? 'bg-blue-500/5' : ''}`}>
                                     <div className={`text-sm font-bold flex items-center justify-center w-8 h-8 rounded-full mb-2 ${isToday ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'text-zinc-500'}`}>
                                         {day}
                                     </div>
@@ -202,7 +305,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                                         {dayEvents.map((evt: any, idx: number) => {
                                             const catColors = getCategoryColor(evt.category, evt.color);
                                             return (
-                                                <div onClick={() => openModal(dateString, evt)} key={idx} className={`border rounded px-2 py-1.5 text-xs cursor-pointer hover:brightness-125 transition-all ${catColors}`}>
+                                                <div onClick={(e) => { e.stopPropagation(); openModal(dateString, evt); }} key={idx} className={`border rounded px-2 py-1.5 text-xs hover:brightness-125 transition-all ${catColors}`}>
                                                     <div className="font-bold flex items-center gap-1 mb-0.5">
                                                         {getPriorityIcon(evt.priority)}
                                                         {evt.start_time} {evt.end_time ? `- ${evt.end_time}` : ''}
@@ -220,7 +323,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                                     </div>
                                     <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
-                                            onClick={() => openModal(dateString)}
+                                            onClick={(e) => { e.stopPropagation(); openModal(dateString); }}
                                             className="text-muted-foreground hover:text-white p-1 rounded hover:bg-white/10"
                                         >
                                             <Plus size={16} />
@@ -306,7 +409,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                                                 <div className="flex items-center gap-4 text-sm opacity-80 mt-2">
                                                     {evt.location && <span className="flex items-center gap-1"><Clock size={14} />{evt.location}</span>}
                                                     {evt.agent_id && <span className="flex items-center gap-1 uppercase tracking-widest text-xs font-bold border border-current rounded px-2">{evt.agent_id}</span>}
-                                                    {evt.is_reminder && <span className="flex items-center gap-1 text-yellow-500"><Bell size={14} /> Reminder</span>}
+                                                    {evt.is_reminder && <span className="flex items-center gap-1 text-yellow-500"><Bell size={14} /> Påminnelse</span>}
                                                 </div>
                                             </div>
                                         </div>
@@ -346,7 +449,7 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
                                 </div>
                             </div>
                             <div>
-                                <span className={`px-3 py-1 rounded text-xs uppercase tracking-widest font-bold ${getCategoryColor(evt.category, evt.color)}`}>{evt.category || 'General'}</span>
+                                <span className={`px-3 py-1 rounded text-xs uppercase tracking-widest font-bold ${getCategoryColor(evt.category, evt.color)}`}>{evt.category || 'Allmänt'}</span>
                             </div>
                         </div>
                     ))}
@@ -359,88 +462,185 @@ export default function CalendarClient({ initialEvents, hasError }: { initialEve
             </div>
 
             {/* Manual Event Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
-                        <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Plus size={18} className="text-blue-400" />
-                                {editingEventId ? `Ändra: ${selectedDate}` : `Ny Händelse: ${selectedDate}`}
-                            </h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-white transition-colors">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div className="flex gap-4">
-                                <div className="flex-1 space-y-1">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Starttid</label>
-                                    <input required type="time" value={formData.start_time} onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors" />
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Sluttid (Frivillig)</label>
-                                    <input type="time" value={formData.end_time} onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors" />
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Beskrivning</label>
-                                <textarea required rows={2} placeholder="Vad händer då?" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors resize-none" />
-                            </div>
-
-                            <div className="flex gap-4">
-                                <div className="flex-1 space-y-1">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Kategori</label>
-                                    <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors">
-                                        <option value="General">Allmänt</option>
-                                        <option value="Work">Arbete</option>
-                                        <option value="Health">Hälsa / Träning</option>
-                                        <option value="Finance">Ekonomi</option>
-                                        <option value="Tech">Teknik / Kod</option>
-                                    </select>
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Prioritet</label>
-                                    <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors">
-                                        <option value="Low">Låg</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="High">Hög</option>
-                                        <option value="Critical">Kritisk</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-4">
-                                <div className="flex-[2] space-y-1">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Plats</label>
-                                    <input type="text" placeholder="T.ex. Office / Zoom" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors" />
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Agent ID</label>
-                                    <input type="text" placeholder="Frivilligt" value={formData.agent_id} onChange={(e) => setFormData({ ...formData, agent_id: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors" />
-                                </div>
-                            </div>
-
-                            <label className="flex items-center gap-3 p-3 bg-black/20 border border-white/5 rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
-                                <input type="checkbox" checked={formData.is_reminder} onChange={(e) => setFormData({ ...formData, is_reminder: e.target.checked })} className="w-4 h-4 rounded bg-black/40 border-white/10 text-blue-500 focus:ring-blue-500/50" />
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-white flex items-center gap-2"><Bell size={14} className="text-yellow-500" /> Telegram-Påminnelse</span>
-                                    <span className="text-xs text-muted-foreground">The Commander pingar dig i Telegram exakt kl {formData.start_time}.</span>
-                                </div>
-                            </label>
-                            <div className="pt-4 flex gap-3">
-                                {editingEventId && (
-                                    <button type="button" onClick={handleDelete} disabled={isSubmitting} className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-bold text-sm tracking-widest uppercase rounded-xl transition-all disabled:opacity-50">
-                                        Ta Bort
-                                    </button>
-                                )}
-                                <button disabled={isSubmitting} type="submit" className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm tracking-widest uppercase rounded-xl transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(37,99,235,0.3)]">
-                                    {isSubmitting ? "Sparar..." : (editingEventId ? "Uppdatera Händelse" : "Injektera i Hjärnan")}
+            {
+                isModalOpen && (
+                    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+                            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Plus size={18} className="text-blue-400" />
+                                    {editingEventId ? `Ändra: ${selectedDate}` : `Ny Händelse: ${selectedDate}`}
+                                </h3>
+                                <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-white transition-colors">
+                                    <X size={20} />
                                 </button>
                             </div>
-                        </form>
+                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                                <div className="flex gap-4">
+                                    <div className="flex-1 space-y-1">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Starttid</label>
+                                        <input required type="time" value={formData.start_time} onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors" />
+                                    </div>
+                                    <div className="flex-1 space-y-1">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Sluttid (Frivillig)</label>
+                                        <input type="time" value={formData.end_time} onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Beskrivning</label>
+                                    <textarea required rows={2} placeholder="Vad händer då?" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors resize-none" />
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <div className="flex-1 space-y-1">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Kategori</label>
+                                        <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors">
+                                            <option value="Allmänt">Allmänt</option>
+                                            <option value="Work">Arbete</option>
+                                            <option value="Health">Hälsa / Träning</option>
+                                            <option value="Finance">Ekonomi</option>
+                                            <option value="Tech">Teknik / Kod</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex-1 space-y-1">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Prioritet</label>
+                                        <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors">
+                                            <option value="Low">Låg</option>
+                                            <option value="Medium">Medium</option>
+                                            <option value="High">Hög</option>
+                                            <option value="Critical">Kritisk</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <div className="flex-[2] space-y-1">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Plats</label>
+                                        <input type="text" placeholder="T.ex. Office / Zoom" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors" />
+                                    </div>
+                                    <div className="flex-1 space-y-1">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Agent ID</label>
+                                        <input type="text" placeholder="Frivilligt" value={formData.agent_id} onChange={(e) => setFormData({ ...formData, agent_id: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-colors" />
+                                    </div>
+                                </div>
+
+                                <label className="flex items-center gap-3 p-3 bg-black/20 border border-white/5 rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
+                                    <input type="checkbox" checked={formData.is_reminder} onChange={(e) => setFormData({ ...formData, is_reminder: e.target.checked })} className="w-4 h-4 rounded bg-black/40 border-white/10 text-blue-500 focus:ring-blue-500/50" />
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-bold text-white flex items-center gap-2"><Bell size={14} className="text-yellow-500" /> Telegram-Påminnelse</span>
+                                        <span className="text-xs text-muted-foreground">The Commander pingar dig i Telegram exakt kl {formData.start_time}.</span>
+                                    </div>
+                                </label>
+                                <div className="pt-4 flex gap-3">
+                                    {editingEventId && (
+                                        <button type="button" onClick={handleDelete} disabled={isSubmitting} className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-bold text-sm tracking-widest uppercase rounded-xl transition-all disabled:opacity-50">
+                                            Ta Bort
+                                        </button>
+                                    )}
+                                    <button disabled={isSubmitting} type="submit" className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm tracking-widest uppercase rounded-xl transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(37,99,235,0.3)]">
+                                        {isSubmitting ? "Sparar..." : (editingEventId ? "Uppdatera Händelse" : "Injektera i Hjärnan")}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            {/* Daily Board Modal (Interactive Drag-and-Drop) */}
+            {
+                isDailyBoardOpen && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="bg-zinc-950 border border-white/10 rounded-3xl shadow-2xl w-full max-w-4xl h-[90vh] overflow-hidden flex flex-col relative before:absolute before:inset-0 before:bg-gradient-to-br before:from-blue-500/5 before:to-transparent before:pointer-events-none">
+                            <div className="p-6 border-b border-white/5 flex items-center justify-between glass z-10 sticky top-0">
+                                <div>
+                                    <h3 className="text-2xl font-black text-white flex items-center gap-3">
+                                        <Clock size={24} className="text-blue-400" />
+                                        Daily Board: {dailyBoardDate}
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground mt-1">Dra och släpp pass för att planera dygnet. Klicka "Sync" för att injecta i AI:ns minne.</p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <button disabled={isSyncing} onClick={handleSyncDay} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm tracking-widest uppercase rounded-xl transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:scale-105 active:scale-95">
+                                        {isSyncing ? "Synkroniserar..." : "Command: Sync"}
+                                    </button>
+                                    <button onClick={() => setIsDailyBoardOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white transition-colors">
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto relative p-6 custom-scrollbar bg-[url('/grid.svg')] bg-center z-0">
+                                {/* 24-hour timeline grid */}
+                                <div className="absolute left-6 top-6 bottom-6 w-16 border-r border-white/10 flex flex-col justify-between" style={{ height: '1440px' }}>
+                                    {Array.from({ length: 25 }).map((_, i) => (
+                                        <div key={`label-${i}`} className="relative h-full flex justify-end pr-4 text-xs font-bold text-zinc-600 -mt-2">
+                                            <span>{String(i).padStart(2, '0')}:00</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="ml-24 relative" style={{ height: '1440px' }}>
+                                    {/* Horizontal grid lines & drop zones */}
+                                    {Array.from({ length: 24 }).map((_, i) => (
+                                        <div
+                                            key={`gridline-${i}`}
+                                            className="absolute w-full border-t border-white/5 hover:bg-white/5 transition-colors border-dashed cursor-pointer"
+                                            style={{ top: `${(i / 24) * 100}%`, height: `${100 / 24}%` }}
+                                            onClick={() => openModal(dailyBoardDate, null, `${String(i).padStart(2, '0')}:00`)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDropOnHour(e, i)}
+                                        />
+                                    ))}
+
+                                    {/* Render Events */}
+                                    {dailyEvents.map((evt, idx) => {
+                                        // Calculate top & height based on start/end times
+                                        const topPos = (() => {
+                                            const [h, m] = evt.start_time.split(':').map(Number);
+                                            return ((h + m / 60) / 24) * 100;
+                                        })();
+                                        const heightPct = (() => {
+                                            if (!evt.end_time) return (1 / 24) * 100; // default 1 hour visual
+                                            const [sH, sM] = evt.start_time.split(':').map(Number);
+                                            const [eH, eM] = evt.end_time.split(':').map(Number);
+                                            const durationHour = (eH + eM / 60) - (sH + sM / 60);
+                                            return (Math.max(durationHour, 0.5) / 24) * 100;
+                                        })();
+
+                                        const catColors = getCategoryColor(evt.category, evt.color);
+
+                                        return (
+                                            <div
+                                                key={`board-evt-${idx}`}
+                                                draggable
+                                                onDragStart={(e) => handleDragStart(e, evt)}
+                                                onDragEnd={handleDragEnd}
+                                                onClick={() => openModal(dailyBoardDate, evt)}
+                                                className={`absolute left-0 right-4 p-3 rounded-xl border ${catColors} cursor-grab active:cursor-grabbing hover:brightness-125 transition-all shadow-lg overflow-hidden group`}
+                                                style={{ top: `${topPos}%`, height: `${heightPct}%`, minHeight: '30px' }}
+                                            >
+                                                <div className="font-bold flex items-center gap-2 mb-1">
+                                                    {getPriorityIcon(evt.priority)}
+                                                    <span className="text-white drop-shadow-md">{evt.start_time} - {evt.end_time || ''}</span>
+                                                </div>
+                                                <h4 className="text-sm font-black text-white truncate drop-shadow-md">{evt.description}</h4>
+                                                {heightPct > 3 && (
+                                                    <div className="absolute bottom-3 left-3 flex gap-2 w-full text-xs">
+                                                        <span className={`px-2 py-0.5 rounded uppercase tracking-widest font-black ${catColors} bg-black/40 backdrop-blur-sm border-white/10`}>
+                                                            {evt.category || 'Allmänt'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 }

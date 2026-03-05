@@ -103,7 +103,7 @@ export default function PlansClient() {
                                 Aktiva Cykler
                             </h2>
                             <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-bold tracking-widest uppercase">
-                                {activeJobs.length} Running
+                                {activeJobs.length} Körs
                             </span>
                         </div>
 
@@ -116,7 +116,7 @@ export default function PlansClient() {
                                         <div className="flex justify-between items-start mb-2">
                                             <h3 className="font-bold text-emerald-400">{job.name}</h3>
                                             <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded uppercase font-bold tracking-wider">
-                                                Active
+                                                Aktiv
                                             </span>
                                         </div>
                                         <p className="text-xs text-muted-foreground leading-relaxed mb-4">
@@ -132,14 +132,14 @@ export default function PlansClient() {
                                                     disabled={actionLoading !== null}
                                                     className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors flex items-center gap-1"
                                                 >
-                                                    <Rocket size={12} /> Inject
+                                                    <Rocket size={12} /> Tvinga Start
                                                 </button>
                                                 <button
                                                     onClick={() => handleAction(job.id, 'pause')}
                                                     disabled={actionLoading !== null}
                                                     className="px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors flex items-center gap-1"
                                                 >
-                                                    <Pause size={12} /> Paus
+                                                    <Pause size={12} /> Pausa
                                                 </button>
                                             </div>
                                         </div>
@@ -157,7 +157,7 @@ export default function PlansClient() {
                                 Vilande / Pausade
                             </h2>
                             <span className="px-3 py-1 bg-gray-500/10 text-gray-400 rounded-full text-xs font-bold tracking-widest uppercase">
-                                {pausedJobs.length} Paused
+                                {pausedJobs.length} Pausade
                             </span>
                         </div>
 
@@ -169,7 +169,7 @@ export default function PlansClient() {
                                     <div key={job.id} className="p-4 rounded-2xl bg-black/40 border border-white/5 opacity-60">
                                         <div className="flex justify-between items-start mb-2">
                                             <h3 className="font-bold text-white">{job.name}</h3>
-                                            <span className="text-[10px] px-2 py-0.5 bg-gray-500/20 text-gray-400 rounded uppercase font-bold tracking-wider">Paused</span>
+                                            <span className="text-[10px] px-2 py-0.5 bg-gray-500/20 text-gray-400 rounded uppercase font-bold tracking-wider">Pausad</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground leading-relaxed mb-4">
                                             {getJobDescription(job.id)}

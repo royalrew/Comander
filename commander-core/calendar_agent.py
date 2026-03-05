@@ -185,4 +185,58 @@ class CalendarAgent:
                 
         return upcoming
 
+    def sync_day(self, date_str: str, events: list) -> bool:
+        """Completely replaces all events on a specific date with a new list of events."""
+        import uuid
+        from database import SessionLocal
+        from models import EventDB, SystemLogDB
+        
+        db = SessionLocal()
+        try:
+            # First, delete all existing events for this date
+            db.query(EventDB).filter(EventDB.start_date == date_str).delete()
+            
+            # Then, insert the new events
+            added_count = 0
+            for evt in events:
+                new_event = EventDB(
+                    id=str(uuid.uuid4()),
+                    start_date=date_str,
+                    start_time=evt.get("start_time", "00:00"),
+                    end_time=evt.get("end_time"),
+                    description=evt.get("description", "Otitlad händelse"),
+                    category=evt.get("category", "General"),
+                    priority=evt.get("priority", "Medium"),
+                    agent_id=evt.get("agent_id"),
+                    location=evt.get("location"),
+                    color=evt.get("color"),
+                    reminder_sent=not evt.get("is_reminder", True)
+                )
+                db.add(new_event)
+                added_count += 1
+                
+            # Log this action for AI awareness
+            audit_entry = SystemLogDB(
+                action_type="calendar_sync_day",
+                details=f"Synced schedule for {date_str} ({added_count} events)."
+            )
+            db.add(audit_entry)
+            
+            db.commit()
+            
+            # Also store a memory to ensure the AI knows we manually updated the schedule
+            from memory_module import memory_bank
+            memory_bank.store_memory(
+                category="ScheduleUpdate", 
+                text=f"Användaren har manuellt planerat och sparat schemat för {date_str}. Det finns nu {added_count} händelser inlagda denna dag."
+            )
+            
+            return True
+        except Exception as e:
+            print(f"Failed to sync day {date_str}: {e}")
+            db.rollback()
+            return False
+        finally:
+             db.close()
+
 calendar_agent = CalendarAgent()

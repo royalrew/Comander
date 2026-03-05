@@ -18,14 +18,14 @@ import {
 export default function Sidebar() {
     const navItems = [
         { name: 'Översikt', icon: Home, href: '/' },
-        { name: 'Tech Lead Agent', icon: Cpu, href: '/agents/tech' },
-        { name: 'Health Agent', icon: HeartPulse, href: '/agents/health' },
-        { name: 'CFO Agent', icon: DollarSign, href: '/agents/finance' },
+        { name: 'Teknisk Agent', icon: Cpu, href: '/agents/tech' },
+        { name: 'Hälsoagent', icon: HeartPulse, href: '/agents/health' },
+        { name: 'Finansagent', icon: DollarSign, href: '/agents/finance' },
         { name: 'Minne & Konvergens', icon: Database, href: '/memory' },
         { name: 'Kalender', icon: Calendar, href: '/calendar' },
         { name: 'Verktyg & Arsenal', icon: Wrench, href: '/tools' },
         { name: 'Mål & Planer', icon: Target, href: '/plans' },
-        { name: 'The Hype Engine', icon: Sparkles, href: '/hype-engine' },
+        { name: 'Hype Engine', icon: Sparkles, href: '/hype-engine' },
         { name: 'Inställningar', icon: Settings, href: '/settings' },
     ];
 
@@ -66,8 +66,8 @@ export default function Sidebar() {
                     <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Nätverk</span>
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
                 </div>
-                <p className="text-xs text-gray-300 font-mono">WS: Connected</p>
-                <p className="text-xs text-gray-400 font-mono mt-1">Ping: 12ms</p>
+                <p className="text-xs text-gray-300 font-mono">WS: Ansluten</p>
+                <p className="text-xs text-gray-400 font-mono mt-1">Svarstid: 12ms</p>
             </div>
 
             {/* Kill Switch */}

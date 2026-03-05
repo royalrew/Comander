@@ -42,16 +42,16 @@ export default function CortexMonitor() {
                 <div>
                     <h2 className="text-xl font-bold flex items-center gap-3 text-white">
                         <Cpu className="text-blue-500" />
-                        The Cortex Monitor
+                        Cortex-Övervakning
                     </h2>
-                    <p className="text-xs text-muted-foreground mt-1">Live Telemetry & Semantic Memory</p>
+                    <p className="text-xs text-muted-foreground mt-1">Live Telemetri & Semantiskt Minne</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="text-[10px] font-mono font-bold text-zinc-400 bg-black/40 px-2 py-1 rounded border border-white/10 uppercase tracking-widest hidden md:block">
-                        {status?.memory_usage || 'Loading vectors...'}
+                        {status?.memory_usage || 'Laddar vektorer...'}
                     </div>
                     <div className="text-[10px] font-mono font-bold text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20 uppercase tracking-widest hidden md:block">
-                        {status?.active_model || 'Connecting...'}
+                        {status?.active_model || 'Ansluter...'}
                     </div>
                     <span className="relative flex h-3 w-3">
                         {isOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
@@ -64,7 +64,7 @@ export default function CortexMonitor() {
                 {/* Memory Feed */}
                 <div className="flex flex-col gap-3">
                     <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                        <Database size={14} /> Active Memory (OpenSearch)
+                        <Database size={14} /> Aktivt Minne (OpenSearch)
                     </h3>
                     <div className="flex-1 p-4 rounded-2xl bg-black/40 border border-white/5 overflow-y-auto max-h-[300px] space-y-3">
                         {memories.map((mem, i) => (
@@ -83,7 +83,7 @@ export default function CortexMonitor() {
                 {/* System Console Logs */}
                 <div className="flex flex-col gap-3">
                     <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                        <Terminal size={14} /> System Console (PostgreSQL)
+                        <Terminal size={14} /> Systemkonsol (PostgreSQL)
                     </h3>
                     <div className="flex-1 p-4 rounded-2xl bg-[#0a0a0a] border border-white/5 overflow-y-auto max-h-[300px] space-y-2 font-mono">
                         {logs.map((log, i) => (
@@ -93,7 +93,7 @@ export default function CortexMonitor() {
                                 <span className="text-zinc-300 break-words">{log.details}</span>
                             </div>
                         ))}
-                        {logs.length === 0 && <div className="text-[11px] text-zinc-600">Waiting for system logs...</div>}
+                        {logs.length === 0 && <div className="text-[11px] text-zinc-600">Väntar på systemloggar...</div>}
                     </div>
                 </div>
             </div>
