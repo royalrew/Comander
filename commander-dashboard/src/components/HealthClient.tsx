@@ -15,12 +15,13 @@ interface CalendarEvent {
 }
 
 const MessageContent = ({ text }: { text: string }) => {
-    const jsonRegex = /```json\s*(\{[\s\S]*?\})\s*```/;
+    // Fångar första ```json```-block (tål extra whitespace och olika case)
+    const jsonRegex = /```(?:json)?\s*([\s\S]*?)```/i;
     const match = text.match(jsonRegex);
 
     if (match) {
         try {
-            const data = JSON.parse(match[1]);
+            const data = JSON.parse(match[1].trim());
             if (data._ui_type === 'workout_card') {
                 const textBefore = text.slice(0, match.index).trim();
                 const textAfter = text.slice(match.index! + match[0].length).trim();

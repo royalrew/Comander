@@ -1,5 +1,8 @@
+"use client";
+
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
     Home,
     Database,
@@ -16,6 +19,8 @@ import {
 } from 'lucide-react';
 
 export default function Sidebar() {
+    const pathname = usePathname();
+
     const navItems = [
         { name: 'Översikt', icon: Home, href: '/' },
         { name: 'Teknisk Agent', icon: Cpu, href: '/agents/tech' },
@@ -45,19 +50,31 @@ export default function Sidebar() {
 
             {/* Navigation */}
             <nav className="flex-1 space-y-1">
-                {navItems.map((item) => (
-                    <Link
-                        key={item.name}
-                        href={item.href}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all w-full text-sm font-medium ${item.name === 'Översikt'
-                            ? 'bg-primary/10 text-primary border border-primary/20 shadow-[inset_0_0_12px_rgba(var(--primary),0.2)]'
-                            : 'text-muted-foreground hover:bg-white/5 hover:text-white'
-                            }`}
-                    >
-                        <item.icon className={`w-4 h-4 ${item.name === 'Översikt' ? 'opacity-100' : 'opacity-70'}`} />
-                        {item.name}
-                    </Link>
-                ))}
+                {navItems.map((item) => {
+                    const isActive =
+                        pathname === item.href ||
+                        (item.href !== '/' && pathname.startsWith(item.href));
+
+                    return (
+                        <Link
+                            key={item.name}
+                            href={item.href}
+                            aria-current={isActive ? 'page' : undefined}
+                            className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all w-full text-sm font-medium
+                                ${isActive
+                                    ? 'bg-primary/15 text-primary border border-primary/30 shadow-[0_0_20px_rgba(59,130,246,0.45)]'
+                                    : 'text-muted-foreground hover:bg-white/5 hover:text-white'
+                                }`}
+                        >
+                            <item.icon
+                                className={`w-4 h-4 transition-opacity ${
+                                    isActive ? 'opacity-100' : 'opacity-70'
+                                }`}
+                            />
+                            {item.name}
+                        </Link>
+                    );
+                })}
             </nav>
 
             {/* System Status */}

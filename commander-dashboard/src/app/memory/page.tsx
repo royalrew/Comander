@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { Database, Search, History, Trash2, ShieldAlert } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Database, Search, History, Trash2, ShieldAlert, Sparkles, Filter, RefreshCw } from 'lucide-react';
 
 export default function MemoryPage() {
     const [memories, setMemories] = useState<any[]>([]);
     const [status, setStatus] = useState<any>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [query, setQuery] = useState("");
+    const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
     const fetchData = async () => {
         setIsRefreshing(true);
@@ -32,11 +34,30 @@ export default function MemoryPage() {
         return () => clearInterval(interval);
     }, []);
 
-    // Calculate memory percentage safely
+    // Calculate memory percentage safely (Postgres-backed vectors)
     let memoryUsageStr = status?.memory_usage || "0/10000 vectors";
     let memoryCount = parseInt(memoryUsageStr.split("/")[0]) || 0;
     let maxMemory = parseInt(memoryUsageStr.split("/")[1]) || 10000;
-    let memoryPercent = Math.min((memoryCount / maxMemory) * 100, 100).toFixed(1);
+    let memoryPercent = Math.min((memoryCount / maxMemory) * 100, 100);
+
+    // Unique categories for filter pills
+    const categories = useMemo(
+        () => Array.from(new Set(memories.map((m) => m.category || "General"))),
+        [memories]
+    );
+
+    // Local in-memory filtering & search (no OpenSearch)
+    const filteredMemories = useMemo(() => {
+        return memories.filter((mem) => {
+            const matchesCategory =
+                categoryFilter === "all" || (mem.category || "General") === categoryFilter;
+            const matchesQuery =
+                !query.trim() ||
+                mem.text?.toLowerCase().includes(query.toLowerCase()) ||
+                mem.category?.toLowerCase().includes(query.toLowerCase());
+            return matchesCategory && matchesQuery;
+        });
+    }, [memories, categoryFilter, query]);
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -47,7 +68,7 @@ export default function MemoryPage() {
                         Minne & Konvergens
                     </h1>
                     <p className="mt-2 text-muted-foreground">
-                        Långtidsminne via OpenSearch och konversationshistorik via PostgreSQL.
+                        Långtidsminne och semantisk kontext, nu helt migrerat till PostgreSQL‑baserade vektorer.
                     </p>
                 </div>
 
@@ -57,26 +78,61 @@ export default function MemoryPage() {
                         disabled={isRefreshing}
                         className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 transition-colors text-sm font-medium disabled:opacity-50"
                     >
-                        {isRefreshing ? <span className="animate-spin text-blue-400">↻</span> : <History size={16} className="text-blue-400" />}
-                        {isRefreshing ? 'Uppdaterar...' : 'Synka'}
+                        {isRefreshing ? (
+                            <RefreshCw size={16} className="text-blue-400 animate-spin" />
+                        ) : (
+                            <History size={16} className="text-blue-400" />
+                        )}
+                        {isRefreshing ? 'Uppdaterar...' : 'Synka nu'}
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 transition-colors text-sm font-medium">
-                        <Trash2 size={16} className="text-red-400" />
-                        Rensa Cache
+                    <button className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/30 transition-colors text-sm font-medium">
+                        <Trash2 size={16} />
+                        Glömskestorm (snart)
                     </button>
                 </div>
             </header>
 
-            {/* Global Search */}
-            <div className="relative mb-8">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Search className="text-muted-foreground" size={20} />
+            {/* Search & Filters */}
+            <div className="mb-8 flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
+                <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Search className="text-muted-foreground" size={20} />
+                    </div>
+                    <input
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Sök i AI:ns minne (lokal vektor‑sök, ingen OpenSearch)..."
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-blue-500/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] transition-all"
+                    />
                 </div>
-                <input
-                    type="text"
-                    placeholder="Sök i AI:ns minne (RAG Vectors)..."
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-blue-500/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] transition-all"
-                />
+                <div className="flex flex-wrap gap-2 lg:justify-end">
+                    <button
+                        onClick={() => setCategoryFilter("all")}
+                        className={`inline-flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-mono tracking-widest uppercase border transition-all ${
+                            categoryFilter === "all"
+                                ? "bg-blue-500/20 border-blue-500/60 text-blue-300"
+                                : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
+                        }`}
+                    >
+                        <Filter size={14} />
+                        Alla
+                    </button>
+                    {categories.map((cat) => (
+                        <button
+                            key={cat}
+                            onClick={() => setCategoryFilter(cat)}
+                            className={`inline-flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-mono tracking-widest uppercase border transition-all ${
+                                categoryFilter === cat
+                                    ? "bg-emerald-500/20 border-emerald-500/60 text-emerald-300"
+                                    : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
+                            }`}
+                        >
+                            <Sparkles size={14} />
+                            {cat}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -85,43 +141,44 @@ export default function MemoryPage() {
                 <div className="lg:col-span-2 space-y-6">
                     <h2 className="text-xl font-bold steel-text flex items-center gap-2">
                         <History className="text-blue-400" size={20} />
-                        Senaste Inlärning (OpenSearch)
+                        Senaste Inlärning (Vektor‑minne)
                     </h2>
 
                     <div className="glass rounded-3xl border border-white/5 overflow-hidden">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-white/5 border-b border-white/10 uppercase text-[10px] tracking-widest text-muted-foreground">
-                                <tr>
-                                    <th className="px-6 py-4 font-bold">Innehåll</th>
-                                    <th className="px-6 py-4 font-bold">Kategori</th>
-                                    <th className="px-6 py-4 font-bold text-right">Tidpunkt</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5 text-gray-300">
-                                {memories.map((mem, i) => (
-                                    <tr key={i} className="hover:bg-white/5 transition-colors group">
-                                        <td className="px-6 py-4 font-mono text-xs text-blue-200 truncate max-w-[200px]" title={mem.text}>
-                                            {mem.text}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded-md text-[10px] uppercase font-bold tracking-wider">
-                                                {mem.category || 'Generell'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right text-muted-foreground text-xs whitespace-nowrap">
-                                            {new Date(mem.timestamp).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "medium" })}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {memories.length === 0 && (
-                                    <tr>
-                                        <td colSpan={3} className="px-6 py-12 text-center text-muted-foreground">
-                                            {status ? "Hittade inga sparade vektorer." : "Laddar minnen från Vector DB..."}
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                        <div className="max-h-[480px] overflow-y-auto custom-scrollbar divide-y divide-white/5 text-gray-300">
+                            {filteredMemories.map((mem, i) => (
+                                <div
+                                    key={i}
+                                    className="px-6 py-4 hover:bg-white/5 transition-colors group flex flex-col gap-2"
+                                >
+                                    <div className="flex items-center justify-between gap-3">
+                                        <span className="text-[10px] font-mono text-blue-200 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                            {mem.category || "General"}
+                                        </span>
+                                        <span className="text-muted-foreground text-[11px] whitespace-nowrap">
+                                            {mem.timestamp
+                                                ? new Date(mem.timestamp).toLocaleString("sv-SE", {
+                                                      dateStyle: "short",
+                                                      timeStyle: "short",
+                                                  })
+                                                : "Okänt"}
+                                        </span>
+                                    </div>
+                                    <p className="font-mono text-xs text-blue-100 leading-relaxed whitespace-pre-wrap">
+                                        {mem.text}
+                                    </p>
+                                </div>
+                            ))}
+                            {filteredMemories.length === 0 && (
+                                <div className="px-6 py-12 text-center text-muted-foreground text-sm">
+                                    {memories.length === 0
+                                        ? status
+                                            ? "Hittade inga sparade vektorer i minnesbanken ännu."
+                                            : "Laddar minnen från vektor‑minnet..."
+                                        : "Inga minnen matchar den här filtreringen/sökningen."}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -135,23 +192,29 @@ export default function MemoryPage() {
                     <div className="p-6 glass rounded-3xl border border-white/5 space-y-6">
                         <div>
                             <div className="flex justify-between text-xs font-bold text-muted-foreground tracking-widest uppercase mb-2">
-                                <span>OpenSearch Volym</span>
-                                <span className={parseFloat(memoryPercent) > 80 ? "text-red-400" : "text-emerald-400"}>
-                                    {memoryPercent}%
+                                <span>Vektor‑minne (PostgreSQL)</span>
+                                <span className={memoryPercent > 80 ? "text-red-400" : "text-emerald-400"}>
+                                    {memoryPercent.toFixed(1)}%
                                 </span>
                             </div>
                             <div className="w-full h-2 rounded-full bg-black/50 overflow-hidden border border-white/5">
                                 <div
-                                    className={`h-full ${parseFloat(memoryPercent) > 80 ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'} rounded-full transition-all duration-1000`}
+                                    className={`h-full ${
+                                        memoryPercent > 80
+                                            ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
+                                            : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                                    } rounded-full transition-all duration-1000`}
                                     style={{ width: `${memoryPercent}%` }}
                                 ></div>
                             </div>
-                            <p className="text-[10px] text-muted-foreground mt-2">{memoryCount} dokument indexerade (Max {maxMemory})</p>
+                            <p className="text-[10px] text-muted-foreground mt-2">
+                                {memoryCount} vektorminnen indexerade (Max {maxMemory})
+                            </p>
                         </div>
 
                         <div className="pt-4 border-t border-white/10">
                             <div className="flex justify-between text-xs font-bold text-muted-foreground tracking-widest uppercase mb-2">
-                                <span>Postgres Sessions</span>
+                                <span>Cortex & Sessions</span>
                                 <span className={status?.heartbeat === 'stable' ? "text-blue-400" : "text-amber-400"}>
                                     {status?.heartbeat === 'stable' ? 'Länkad / Aktiv' : 'Kopplar upp...'}
                                 </span>
