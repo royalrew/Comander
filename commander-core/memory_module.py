@@ -33,16 +33,27 @@ class MemoryBank:
     """
 
     def __init__(self):
-        """Initializes the PostgreSQL-based memory bank."""
+        """Initializes the memory bank (PostgreSQL in prod, SQLite fallback in dev)."""
         try:
             from database import engine
             from sqlalchemy import text as sql_text
 
             self.engine = engine
 
-            # Create the memories table if it doesn't exist
-            with engine.begin() as conn:
-                conn.execute(sql_text("""
+            # Dialect-aware DDL so it works on both Postgres and SQLite (Railway is currently SQLite)
+            dialect = engine.dialect.name
+            if dialect == "sqlite":
+                create_sql = """
+                    CREATE TABLE IF NOT EXISTS memories (
+                        id TEXT PRIMARY KEY,
+                        text TEXT NOT NULL,
+                        category VARCHAR(100) DEFAULT 'General',
+                        timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                        embedding TEXT
+                    )
+                """
+            else:
+                create_sql = """
                     CREATE TABLE IF NOT EXISTS memories (
                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         text TEXT NOT NULL,
@@ -50,9 +61,13 @@ class MemoryBank:
                         timestamp TIMESTAMPTZ DEFAULT NOW(),
                         embedding TEXT
                     )
-                """))
+                """
 
-            logger.info("MemoryBank initialized with PostgreSQL (in-app cosine similarity).")
+            # Create the memories table if it doesn't exist
+            with engine.begin() as conn:
+                conn.execute(sql_text(create_sql))
+
+            logger.info(f"MemoryBank initialized with dialect='{dialect}' (in-app cosine similarity).")
             self.enabled = True
         except Exception as e:
             logger.error(f"Failed to initialize MemoryBank: {e}")
