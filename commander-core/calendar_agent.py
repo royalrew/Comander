@@ -7,20 +7,25 @@ from zoneinfo import ZoneInfo
 SWEDISH_TZ = ZoneInfo("Europe/Stockholm")
 CALENDAR_PATH = os.path.join(os.path.dirname(__file__), 'memory', 'calendar_db.json')
 
-# Auto-migrate: Add missing columns if they don't exist
-try:
-    from database import engine
-    from sqlalchemy import text
-    with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE events ADD COLUMN category VARCHAR DEFAULT 'General'"))
-        conn.execute(text("ALTER TABLE events ADD COLUMN priority VARCHAR DEFAULT 'Medium'"))
-        conn.execute(text("ALTER TABLE events ADD COLUMN agent_id VARCHAR"))
-        conn.execute(text("ALTER TABLE events ADD COLUMN location VARCHAR"))
-        conn.execute(text("ALTER TABLE events ADD COLUMN color VARCHAR"))
-        conn.execute(text("ALTER TABLE events ADD COLUMN owner VARCHAR DEFAULT 'ceo'"))
-except Exception as e:
-    # Columns probably already exist
-    pass
+# Auto-migrate: Add missing columns if they don't exist (each in its own try/except)
+from database import engine
+from sqlalchemy import text
+
+_migration_columns = [
+    "ALTER TABLE events ADD COLUMN category VARCHAR DEFAULT 'General'",
+    "ALTER TABLE events ADD COLUMN priority VARCHAR DEFAULT 'Medium'",
+    "ALTER TABLE events ADD COLUMN agent_id VARCHAR",
+    "ALTER TABLE events ADD COLUMN location VARCHAR",
+    "ALTER TABLE events ADD COLUMN color VARCHAR",
+    "ALTER TABLE events ADD COLUMN owner VARCHAR DEFAULT 'ceo'",
+]
+
+for _sql in _migration_columns:
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(_sql))
+    except Exception:
+        pass  # Column already exists
 
 class CalendarAgent:
     """Manages the Executive Calendar via the centralized PostgreSQL database."""
