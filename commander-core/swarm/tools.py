@@ -151,3 +151,69 @@ def get_calendar_view(days_ahead: int = 7) -> str:
         return formatted
     except Exception as e:
         return f"System Error: {str(e)}"
+
+@tool
+def remind_partner(description: str, time: str = "17:00") -> str:
+    """Skickar en påminnelse till Hanni (CEO:ns fru) genom att lägga in en händelse i hennes kalender.
+    Använd detta när CEO:n säger något i stil med 'Påminn Hanni att...' eller 'Säg till min fru att...'.
+    Beskrivningen ska ALLTID vara på SVENSKA oavsett sammanhangets språk.
+    
+    Args:
+        description: Vad påminnelsen handlar om (alltid på svenska).
+        time: Tid för påminnelsen i HH:MM-format. Standard: 17:00.
+    """
+    try:
+        from calendar_agent import calendar_agent
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        
+        now = datetime.now(ZoneInfo("Europe/Stockholm"))
+        today_str = now.strftime("%Y-%m-%d")
+        
+        success = calendar_agent.add_event(
+            start_date=today_str,
+            start_time=time,
+            description=f"📩 Från Jimmy: {description}",
+            agent_id="CEOReminder",
+            owner="partner",
+            is_reminder=True
+        )
+        if success:
+            return f"Påminnelse skickad till Hanni kl {time}: '{description}'"
+        return "Misslyckades att skapa påminnelsen."
+    except Exception as e:
+        return f"System Error: {str(e)}"
+
+@tool
+def manage_shopping_list(action: str, items: str = "") -> str:
+    """Hanterar den gemensamma inköpslistan för hushållet (delad med Hanni).
+    
+    Args:
+        action: 'add' för att lägga till varor, 'view' för att visa listan, 'clear' för att tömma den.
+        items: Kommaseparerad lista med varor att lägga till (används bara vid action='add').
+    """
+    try:
+        from partner_bot import get_shopping_list, save_shopping_list
+        
+        if action == "view":
+            current = get_shopping_list()
+            if not current:
+                return "Inköpslistan är tom."
+            return "Inköpslistan:\n" + "\n".join([f"- {item}" for item in current])
+        
+        elif action == "add":
+            new_items = [i.strip() for i in items.split(",") if i.strip()]
+            if not new_items:
+                return "Inga varor att lägga till."
+            current = get_shopping_list()
+            current.extend(new_items)
+            save_shopping_list(current)
+            return f"Lade till {len(new_items)} varor på inköpslistan: {', '.join(new_items)}"
+        
+        elif action == "clear":
+            save_shopping_list([])
+            return "Inköpslistan är nu tömd."
+        
+        return "Okänd action. Använd 'add', 'view' eller 'clear'."
+    except Exception as e:
+        return f"System Error: {str(e)}"

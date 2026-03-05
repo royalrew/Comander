@@ -116,6 +116,48 @@ async def cmd_review(message: types.Message):
         # Run asynchronously as perform_midweek_review is an async function
         await routines.perform_midweek_review()
 
+@dp.message(Command("hemma"))
+async def cmd_commute(message: types.Message):
+    """Sends a 'On my way home' broadcast to Hanni via her bot."""
+    if not await reporter_instance.verify_user(message):
+        return
+    try:
+        from partner_bot import send_message_to_hanni
+        success = await send_message_to_hanni(
+            "🏠 **Jimmy är på väg hem!** \n\n"
+            "Han har precis lämnat jobbet/mötet. 🚗\n\n"
+            "_Skickat automatiskt via Sintari._"
+        )
+        if success:
+            await message.answer("✅ Meddelande skickat till Hanni: 'På väg hem!' 🏠")
+        else:
+            await message.answer("❌ Kunde inte skicka meddelandet. Kontrollera TELEGRAM_PARTNER_USER_ID.")
+    except Exception as e:
+        await message.answer(f"❌ Fel: {str(e)}")
+
+@dp.message(Command("hanni"))
+async def cmd_remind_hanni(message: types.Message):
+    """Sends a reminder/message to Hanni. Usage: /hanni Hämta barnen kl 16"""
+    if not await reporter_instance.verify_user(message):
+        return
+    
+    raw_text = message.text.replace("/hanni", "", 1).strip()
+    if not raw_text:
+        await message.reply("ℹ️ Användning: /hanni [meddelande]\nExempel: /hanni Glöm inte läkarbesöket kl 14")
+        return
+    
+    try:
+        from partner_bot import send_message_to_hanni
+        success = await send_message_to_hanni(
+            f"📩 **Meddelande från Jimmy:**\n\n{raw_text}"
+        )
+        if success:
+            await message.answer(f"✅ Skickat till Hanni: '{raw_text}'")
+        else:
+            await message.answer("❌ Kunde inte skicka meddelandet.")
+    except Exception as e:
+        await message.answer(f"❌ Fel: {str(e)}")
+
 # ==========================================
 # DETERMINISTIC SCHEDULE IMPORT (bypasses LLM)
 # ==========================================

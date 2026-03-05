@@ -4,6 +4,7 @@ import logging
 from dotenv import load_dotenv
 
 from reporter import start_telegram_polling, reporter_instance
+from partner_bot import start_partner_polling, send_partner_morning_briefing, send_welcome_to_hanni
 from router import router
 from pipeline import pipeline
 
@@ -76,6 +77,9 @@ async def morning_briefing_job():
     
     briefing = f"🌅 **Morgonens Stridsplan**\n\n{battle_plan}\n\n_Systemstatus: API-kostnad ${cfo.current_daily_spend:.2f}_"
     await reporter_instance.send_morning_briefing(briefing)
+    
+    # Also send Hanni her friendly morning briefing
+    await send_partner_morning_briefing()
 
 async def check_reminders_job():
     """Checks for due calendar events every minute and sends reminders."""
@@ -138,10 +142,13 @@ async def main():
         logger.info("⚠️  DISABLE_TELEGRAM=true → Telegram polling is OFF. Only API server is running.")
         await server.serve()
     else:
-        logger.info("Starting Telegram Polling concurrently with API server...")
+        logger.info("Starting Telegram Polling (CEO + Partner) concurrently with API server...")
+        # Send one-time welcome to Hanni before starting polling
+        await send_welcome_to_hanni()
         await asyncio.gather(
             server.serve(),
-            start_telegram_polling()
+            start_telegram_polling(),
+            start_partner_polling()
         )
 
 if __name__ == "__main__":

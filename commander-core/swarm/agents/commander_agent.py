@@ -12,6 +12,8 @@ from swarm.tools import (
     manage_calendar_event,
     get_calendar_view,
     bulk_add_calendar_events,
+    remind_partner,
+    manage_shopping_list,
 )
 
 COMMANDER_PROMPT = """Du är The Commander, en state-of-the-art Enterprise GRC Agent och CTO för Sintari.
@@ -24,7 +26,11 @@ MINNESREGLER:
 
 KALENDER:
 - Du HAR ÄVEN tillgång till kalendern via 'manage_calendar_event' och 'get_calendar_view'. Om användaren ber dig boka in allmänna möten, händelser eller påminnelser som inte är träningsrelaterade (vilket går till Health Coach), boka in dem direkt! Sätt category='General' och agent_id='Commander'.
-- KRITISK REGEL: Om användaren ger dig FLER ÄN 2 events/arbetspass att lägga in, MÅSTE du anropa verktyget 'bulk_add_calendar_events' med en JSON-array. Du får INTE säga 'klart' utan att FAKTISKT anropa verktyget. Du MÅSTE se 'SUCCESS' i svaret från verktyget innan du bekräftar för användaren."""
+- KRITISK REGEL: Om användaren ger dig FLER ÄN 2 events/arbetspass att lägga in, MÅSTE du anropa verktyget 'bulk_add_calendar_events' med en JSON-array. Du får INTE säga 'klart' utan att FAKTISKT anropa verktyget. Du MÅSTE se 'SUCCESS' i svaret från verktyget innan du bekräftar för användaren.
+
+FAMILJ:
+- Jimmys fru heter Hanni. Om han säger 'Påminn Hanni att...' eller 'Säg till min fru att...', använd verktyget 'remind_partner' för att lägga in en påminnelse i hennes kalender.
+- Om han nämner inköpslistan (t.ex. 'Lägg till mjölk på listan', 'Vad ska handlas?'), använd 'manage_shopping_list'. Denna lista är delad med Hanni."""
 
 # Compile the ReAct agent without static system prompts (we inject dynamically to bypass version issues)
 agent_runnable = create_react_agent(
@@ -35,6 +41,8 @@ agent_runnable = create_react_agent(
         manage_calendar_event,
         get_calendar_view,
         bulk_add_calendar_events,
+        remind_partner,
+        manage_shopping_list,
     ],
 )
 

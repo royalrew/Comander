@@ -17,6 +17,7 @@ try:
         conn.execute(text("ALTER TABLE events ADD COLUMN agent_id VARCHAR"))
         conn.execute(text("ALTER TABLE events ADD COLUMN location VARCHAR"))
         conn.execute(text("ALTER TABLE events ADD COLUMN color VARCHAR"))
+        conn.execute(text("ALTER TABLE events ADD COLUMN owner VARCHAR DEFAULT 'ceo'"))
 except Exception as e:
     # Columns probably already exist
     pass
@@ -41,6 +42,7 @@ class CalendarAgent:
                 "agent_id": getattr(e, 'agent_id', None),
                 "location": getattr(e, 'location', None),
                 "color": getattr(e, 'color', None),
+                "owner": getattr(e, 'owner', 'ceo'),
                 "created_at": e.created_at.isoformat() if getattr(e, 'created_at', None) else None,
                 "is_reminder": not getattr(e, 'reminder_sent', False)
             } for e in events]
@@ -55,7 +57,7 @@ class CalendarAgent:
         now = datetime.now(SWEDISH_TZ)
         return now.strftime("%Y-%m-%d %H:%M:%S (%A)")
 
-    def add_event(self, start_date: str, start_time: str, description: str, end_time: str = None, is_reminder: bool = True, category: str = "General", priority: str = "Medium", agent_id: str = None, location: str = None, color: str = None) -> bool:
+    def add_event(self, start_date: str, start_time: str, description: str, end_time: str = None, is_reminder: bool = True, category: str = "General", priority: str = "Medium", agent_id: str = None, location: str = None, color: str = None, owner: str = "ceo") -> bool:
         import uuid
         from database import SessionLocal
         from models import EventDB
@@ -73,6 +75,7 @@ class CalendarAgent:
                 agent_id=agent_id,
                 location=location,
                 color=color,
+                owner=owner,
                 reminder_sent=not is_reminder
             )
             db.add(new_event)
@@ -85,7 +88,7 @@ class CalendarAgent:
         finally:
             db.close()
 
-    def update_event(self, event_id: str, start_date: str, start_time: str, description: str, end_time: str = None, is_reminder: bool = True, category: str = "General", priority: str = "Medium", agent_id: str = None, location: str = None, color: str = None) -> bool:
+    def update_event(self, event_id: str, start_date: str, start_time: str, description: str, end_time: str = None, is_reminder: bool = True, category: str = "General", priority: str = "Medium", agent_id: str = None, location: str = None, color: str = None, owner: str = "ceo") -> bool:
         from database import SessionLocal
         from models import EventDB
         db = SessionLocal()
@@ -101,6 +104,7 @@ class CalendarAgent:
                 event.agent_id = agent_id
                 event.location = location
                 event.color = color
+                event.owner = owner
                 event.reminder_sent = not is_reminder
                 db.commit()
                 return True
@@ -210,6 +214,7 @@ class CalendarAgent:
                     agent_id=evt.get("agent_id"),
                     location=evt.get("location"),
                     color=evt.get("color"),
+                    owner="ceo",
                     reminder_sent=not evt.get("is_reminder", True)
                 )
                 db.add(new_event)

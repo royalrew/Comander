@@ -16,6 +16,7 @@ class EventDB(Base):
     location = Column(String, nullable=True)
     color = Column(String, nullable=True)
     reminder_sent = Column(Boolean, default=False)
+    owner = Column(String, nullable=False, default="ceo") # "ceo" or "partner"
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class SystemLogDB(Base):
