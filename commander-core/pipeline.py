@@ -2,17 +2,16 @@ import os
 import uuid
 import boto3
 import requests
+import json
 from datetime import datetime
 from litellm import image_generation
 from router import router
-from opensearchpy import OpenSearch
-from urllib.parse import urlparse
 
 class HypePipeline:
     """
     Automated Multi-Modal B2B/B2C pipeline.
     Transforms mundane objects (images) and generates corresponding AI assets.
-    Uploads the final packaged assets to Cloudflare R2 and indexes in OpenSearch.
+    Uploads the final packaged assets to Cloudflare R2 and indexes in MemoryBank.
     """
     def __init__(self):
         # Cloudflare R2 Setup
@@ -28,27 +27,7 @@ class HypePipeline:
             aws_secret_access_key=os.getenv("R2_SECRET_ACCESS_KEY")
         )
 
-        # OpenSearch Setup
-        url = os.getenv("OPENSEARCH_URL")
-        user = os.getenv("OPENSEARCH_USERNAME")
-        pwd = os.getenv("OPENSEARCH_PWD") or os.getenv("OPENSEARCH_PASSWORD")
-        self.index_name = os.getenv("OPENSEARCH_INDEX_NAME", "commander_core_memory")
-        
-        if url:
-            parsed = urlparse(url)
-            host = parsed.hostname
-            port = parsed.port or (443 if parsed.scheme == "https" else 80)
-            use_ssl = parsed.scheme == "https"
-            
-            self.os_client = OpenSearch(
-                hosts=[{'host': host, 'port': port}],
-                http_auth=(user, pwd) if user and pwd else None,
-                use_ssl=use_ssl,
-                verify_certs=False,
-                ssl_show_warn=False
-            )
-        else:
-            self.os_client = None
+        # Setup complete
 
     def _upload_to_r2(self, file_content: bytes, filename: str, content_type: str) -> str:
         """Securely uploads raw bytes to R2."""
@@ -61,24 +40,18 @@ class HypePipeline:
         )
         return f"{self.public_url}/{self.bucket}/{object_key}"
 
-    def _index_in_opensearch(self, asset_data: dict):
-        """Indexes the generated asset metadata into OpenSearch."""
-        if not self.os_client:
-            return
-        
+    def _index_in_memory(self, asset_data: dict):
+        """Indexes the generated asset metadata into the Postgres MemoryBank."""
         try:
-            # Ensure index exists
-            if not self.os_client.indices.exists(index=self.index_name):
-                self.os_client.indices.create(index=self.index_name)
-                
-            self.os_client.index(
-                index=self.index_name,
-                body=asset_data,
-                id=asset_data.get("asset_id", uuid.uuid4().hex)
-            )
-            print(f"Indexed asset {asset_data.get('asset_id')} in OpenSearch")
+            from memory_module import memory_bank
+            summary = f"Generated viral asset '{asset_data.get('preset')}' with prompt: {asset_data.get('prompt_used')}. Caption: {asset_data.get('caption')}"
+            success, err = memory_bank.store_memory("HypeAsset", summary)
+            if success:
+                print(f"Indexed asset {asset_data.get('asset_id')} in MemoryBank")
+            else:
+                print(f"Failed to index in MemoryBank: {err}")
         except Exception as e:
-            print(f"Failed to index in OpenSearch: {e}")
+            print(f"Failed to index in MemoryBank: {e}")
 
     def trigger_transformation(self, style_preset: str) -> dict:
         """
@@ -132,7 +105,7 @@ class HypePipeline:
         }
         
         # Save memory of this generation
-        self._index_in_opensearch(asset_data)
+        self._index_in_memory(asset_data)
         
         return {
             "status": "success",

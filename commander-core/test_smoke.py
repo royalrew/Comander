@@ -70,38 +70,14 @@ def test_stripe():
     except Exception as e:
         print(f"❌ Stripe Error: {e}")
 
-def test_opensearch():
-    print("Testing OpenSearch...")
-    from opensearchpy import OpenSearch
-    url = os.getenv("OPENSEARCH_URL")
-    user = os.getenv("OPENSEARCH_USERNAME")
-    pwd = os.getenv("OPENSEARCH_PWD") or os.getenv("OPENSEARCH_PASSWORD")
-    
-    if not url:
-        print("❌ OpenSearch Error: OPENSEARCH_URL is not set.")
-        return
-
-    try:
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        host = parsed.hostname
-        port = parsed.port or (443 if parsed.scheme == "https" else 80)
-        use_ssl = parsed.scheme == "https"
-        
-        print(f"Connecting to {parsed.scheme}://{host}:{port} (SSL: {use_ssl})...")
-        
-        client = OpenSearch(
-            hosts=[{'host': host, 'port': port}],
-            http_auth=(user, pwd) if user and pwd else None,
-            use_ssl=use_ssl,
-            verify_certs=False,
-            ssl_show_warn=False
-        )
-        info = client.info()
-        print(f"✅ OpenSearch: Connected to {info['cluster_name']} (Version: {info['version']['number']})")
-    except Exception as e:
-        print(f"❌ OpenSearch Error: {e}")
-        print("💡 Hint: If OPENSEARCH_URL uses 'https' but security is disabled on Railway, try changing it to 'http'.")
+def test_memory_bank():
+    print("Testing MemoryBank (PostgreSQL)...")
+    from memory_module import memory_bank
+    if memory_bank.enabled:
+        count = memory_bank.count_memories()
+        print(f"✅ MemoryBank: Connected and operational (Memories stored: {count})")
+    else:
+        print("❌ MemoryBank Error: Initialization failed. Check PostgreSQL connection and logs.")
 
 async def run_all():
     print("=== COMMANDER SMOKE TEST ===\n")
@@ -110,7 +86,7 @@ async def run_all():
     test_r2()
     test_postgres()
     test_stripe()
-    test_opensearch()
+    test_memory_bank()
     print("\n=== SMOKE TEST COMPLETE ===")
 
 if __name__ == "__main__":
