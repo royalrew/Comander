@@ -509,9 +509,25 @@ async def partner_chat_handler(message: types.Message):
     text_lower = user_text.lower()
 
     # 1. Check if she's asking about Jimmy's schedule
-    jimmy_keywords = ["jimmy", "min man", "han jobbar", "hur jobbar", "når jobbar",
-                       "ninkeygii", "ninkeyga"]
-    if any(kw in text_lower for kw in jimmy_keywords):
+    # Require BOTH a person keyword AND a schedule keyword
+    person_kws = ["jimmy", "min man", "han", "ninkeygii", "ninkeyga"]
+    schedule_kws = ["jobbar", "jobb", "schema", "kalender", "hur jobbar", "när jobbar", "shaqo", "jadwal"]
+    
+    # Check if the text matches "hur jobbar jimmy" patterns
+    is_asking_jimmy_schedule = False
+    
+    # Exact phrase matches
+    exact_phrases = ["hur jobbar jimmy", "när jobbar jimmy", "jimmys schema"]
+    if any(p in text_lower for p in exact_phrases):
+        is_asking_jimmy_schedule = True
+    # Or intersection of keywords (but only if it's a short message <= 6 words to avoid hijacking long chat)
+    elif len(user_text.split()) <= 6:
+        has_person = any(kw in text_lower for kw in person_kws)
+        has_schedule = any(kw in text_lower for kw in schedule_kws)
+        if has_person and has_schedule and "?" in text_lower:
+            is_asking_jimmy_schedule = True
+
+    if is_asking_jimmy_schedule:
         schedule = get_jimmy_schedule(days_ahead=7)
         tips = "\n\n💡 _Tips: Skriv 'Påminn Jimmy att...' för att skicka honom en påminnelse._"
         await message.answer(schedule + tips, parse_mode="Markdown")
