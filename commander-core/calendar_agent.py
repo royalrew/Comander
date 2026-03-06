@@ -31,6 +31,7 @@ class CalendarAgent:
     """Manages the Executive Calendar via the centralized PostgreSQL database."""
     
     def _load_events(self) -> list:
+        """Loads all events. Falls back to raw SQL if the 'owner' column doesn't exist yet."""
         from database import SessionLocal
         from models import EventDB
         db = SessionLocal()
@@ -52,8 +53,34 @@ class CalendarAgent:
                 "is_reminder": not getattr(e, 'reminder_sent', False)
             } for e in events]
         except Exception as e:
-            print(f"Error loading calendar from DB: {e}")
-            return []
+            # If ORM fails (e.g. owner column missing), fallback to raw SQL without owner
+            db.rollback()
+            print(f"ORM _load_events failed ({e}), falling back to raw SQL...")
+            try:
+                from sqlalchemy import text as sql_text
+                rows = db.execute(sql_text(
+                    "SELECT id, start_date, start_time, end_time, description, "
+                    "category, priority, agent_id, location, color, reminder_sent, created_at "
+                    "FROM events"
+                )).fetchall()
+                return [{
+                    "id": str(r[0]),
+                    "start_date": r[1],
+                    "start_time": r[2],
+                    "end_time": r[3],
+                    "description": r[4],
+                    "category": r[5] or "General",
+                    "priority": r[6] or "Medium",
+                    "agent_id": r[7],
+                    "location": r[8],
+                    "color": r[9],
+                    "owner": "ceo",  # Default all to CEO when owner column doesn't exist
+                    "created_at": r[11].isoformat() if r[11] else None,
+                    "is_reminder": not (r[10] or False)
+                } for r in rows]
+            except Exception as e2:
+                print(f"Raw SQL fallback also failed: {e2}")
+                return []
         finally:
             db.close()
 
