@@ -43,6 +43,13 @@ async def watchdog_heartbeat():
     else:
         logger.info("Watchdog assessment: NO ACTION REQUIRED.")
 
+async def nightly_autonomous_job():
+    """Runs the Proactive Controller at 03:00 to autonomously research."""
+    from swarm.controller import controller_engine
+    logger.info("Triggering Nightly Autonomous Job (Tänkaren)...")
+    await controller_engine.execute_nightly_routine()
+
+
 async def morning_briefing_job():
     """Generates and sends the daily summary via the Health Coach persona."""
     from calendar_agent import calendar_agent
@@ -60,6 +67,24 @@ async def morning_briefing_job():
     else:
         schema_text += " Helt rent. Inga möten inbokade."
         
+    # Fetch autonomous findings from SystemLogDB
+    try:
+        from database import SessionLocal
+        from models import SystemLogDB
+        from datetime import datetime, timedelta
+        
+        db = SessionLocal()
+        yesterday = datetime.utcnow() - timedelta(hours=12)
+        logs = db.query(SystemLogDB).filter(SystemLogDB.action_type == "autonomous_nightly_research", SystemLogDB.timestamp >= yesterday).all()
+        
+        if logs:
+            schema_text += "\n\nNattliga Upptäckter från Tänkaren (Clawbot):\n"
+            for l in logs:
+                schema_text += f"- {l.details}\n"
+        db.close()
+    except Exception as e:
+        logger.error(f"Failed to fetch nightly logs for briefing: {e}")
+
     profile_data = {}
     try:
         profile_path = os.path.join(os.path.dirname(__file__), 'ceo_profile.yaml')
@@ -111,6 +136,9 @@ async def main():
     
     # Run the Watchdog Heartbeat every hour
     commander_scheduler.add_job(watchdog_heartbeat, 'interval', minutes=60, id='watchdog_heartbeat', name='Watchdog Heartbeat')
+    
+    # Run the Nightly Autonomous Routine at 03:00
+    commander_scheduler.add_job(nightly_autonomous_job, 'cron', hour=3, minute=0, id='nightly_autonomous', name='Nightly Autonomous Research')
     
     # Run the Mid-Week Review on Wednesdays at 14:00
     import routines

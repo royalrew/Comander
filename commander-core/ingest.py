@@ -1,7 +1,45 @@
 import os
 import sys
 import time
+import uuid
+import boto3
 from memory_module import memory_bank
+
+def archive_to_r2(content: str, source_url: str, metadata: dict = None) -> bool:
+    """Saves raw data (e.g., HTML) to Cloudflare R2 for auditability ("Zero Hallucination")."""
+    try:
+        r2_access_key = os.getenv("CLOUDFLARE_R2_ACCESS_KEY")
+        r2_secret_key = os.getenv("CLOUDFLARE_R2_SECRET_KEY")
+        bucket_name = os.getenv("CLOUDFLARE_R2_BUCKET_NAME", "hype-engine-media")
+        
+        if not r2_access_key or not r2_secret_key:
+            print("R2 credentials not found. Skipping archive.")
+            return False
+
+        account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
+        endpoint_url = f"https://{account_id}.r2.cloudflarestorage.com" if account_id else None
+
+        s3 = boto3.client(
+            's3',
+            endpoint_url=endpoint_url,
+            aws_access_key_id=r2_access_key,
+            aws_secret_access_key=r2_secret_key,
+            region_name='auto' 
+        )
+
+        filename = f"archive/{uuid.uuid4().hex}.html"
+        
+        s3.put_object(
+            Bucket=bucket_name,
+            Key=filename,
+            Body=content.encode('utf-8'),
+            Metadata=metadata or {'source': source_url}
+        )
+        print(f"Archived raw content to R2: {filename}")
+        return True
+    except Exception as e:
+        print(f"Failed to archive to R2: {e}")
+        return False
 
 def ingest_markdown(filepath: str):
     if not os.path.exists(filepath):

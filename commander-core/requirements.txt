@@ -41,3 +41,8 @@ aiogram==3.10.0
 stripe==10.4.0
 
 # Vector DB (now using pgvector via PostgreSQL, no separate service needed)
+
+# Advanced Web Scraping (Clawbot)
+crawl4ai==0.3.3
+playwright>=1.44.0
+markdown-it-py>=3.0.0

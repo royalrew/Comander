@@ -217,3 +217,33 @@ def manage_shopping_list(action: str, items: str = "") -> str:
         return "Okänd action. Använd 'add', 'view' eller 'clear'."
     except Exception as e:
         return f"System Error: {str(e)}"
+
+@tool
+def search_web(query: str, max_results: int = 5) -> str:
+    """Söker på nätet (via DuckDuckGo) och returnerar resultatträffar med webbadresser (URLs).
+    Använd detta FÖRST för att hitta intressanta länkar som du sedan läser med deep_scrape_url."""
+    try:
+        from research_module import research_module
+        result = research_module.search_internet(query, max_results=max_results)
+        return result
+    except Exception as e:
+        return f"System Error: {str(e)}"
+
+@tool
+async def deep_scrape_url(url: str, bypass_ethics: bool = False) -> str:
+    """Scrapar en webbsida på djupet (läser innehållet via en headless browser) och returnerar ren Markdown.
+    Använd detta för att hämta fakta, API-dokumentation eller priser från en specifik URL.
+    
+    Args:
+        url: Den fullständiga webbadressen.
+        bypass_ethics: Sätt till True ENDAST om du proaktivt har blivit explicit tillsagd att ignorera robots.txt.
+    """
+    try:
+        from scraper_module import scraper_module
+        res = await scraper_module.scrape_url(url, bypass_ethics)
+        if res.success:
+            return f"Scraping lyckades. Innehåll:\n{res.markdown}"
+        else:
+            return f"Scraping misslyckades: {res.error}"
+    except Exception as e:
+        return f"System Error: {str(e)}"

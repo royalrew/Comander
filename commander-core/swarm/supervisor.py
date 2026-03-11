@@ -11,6 +11,7 @@ Available Sub-Agents:
 - HealthCoachAgent: For fitness, sleep, metrics, physical goals.
 - TechLeadAgent: For coding, software architecture, technical planning.
 - CFOAgent: For finance, subscriptions, Stripe data.
+- ResearchAgent: For web searching, deep web scraping, finding documentation, or competitor intelligence.
 - CommanderAgent: For general conversation, chitchat, or unclassified queries (like "ok", "va?", "tack").
 
 IMPORTANT ROUTING RULE:
@@ -30,7 +31,7 @@ async def supervisor_node(state: AgentState) -> AgentState:
     
     decision = response.content.strip().replace('"', '').replace("'", "")
     
-    valid_agents = ["TechLeadAgent", "HealthCoachAgent", "CFOAgent", "CommanderAgent", "FINISH"]
+    valid_agents = ["TechLeadAgent", "HealthCoachAgent", "CFOAgent", "CommanderAgent", "ResearchAgent", "FINISH"]
     if decision not in valid_agents:
         decision = "CommanderAgent" # Fallback to general chat
         
